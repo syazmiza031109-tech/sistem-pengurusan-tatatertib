@@ -8,6 +8,7 @@ import {
   Plus, Search, Filter, ShieldAlert, FolderOpen, Calendar, 
   FileText, ArrowRightLeft, Database, CheckCircle
 } from 'lucide-react';
+import AdminCharts from '@/components/admin-charts';
 
 export default function AdminDashboard() {
   const [cases, setCases] = useState<CompleteCase[]>([]);
@@ -128,6 +129,9 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Analytics Charts */}
+      <AdminCharts cases={cases} />
 
       {/* Filter and Table Panel */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
