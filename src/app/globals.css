@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+@theme {
+  --color-gov-blue-50: #f0f5fa;
+  --color-gov-blue-100: #dbeaf4;
+  --color-gov-blue-200: #bdd7e9;
+  --color-gov-blue-300: #91bad8;
+  --color-gov-blue-400: #5d97c3;
+  --color-gov-blue-500: #3b7cae;
+  --color-gov-blue-600: #2c6390;
+  --color-gov-blue-700: #1d3e5c; /* Deep Corporate Blue */
+  --color-gov-blue-800: #152d43;
+  --color-gov-blue-900: #0d1c2a;
+  
+  --color-gov-gold-50: #fefcf3;
+  --color-gov-gold-100: #fef8db;
+  --color-gov-gold-200: #fdf0ad;
+  --color-gov-gold-300: #fbe272;
+  --color-gov-gold-400: #fad243;
+  --color-gov-gold-500: #e2ab10; /* Corporate Yellow/Gold */
+  --color-gov-gold-600: #c28d09;
+  --color-gov-gold-700: #a17006;
+  --color-gov-gold-800: #7d5407;
+  --color-gov-gold-900: #4a3002;
+
+  --animate-fade-in: fade-in 0.3s ease-out;
+  --animate-slide-up: slide-up 0.4s ease-out;
+  --animate-slide-in: slide-in 0.3s ease-out;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slide-in {
+  from { transform: translateX(-12px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  min-height: 100vh;
+}
+
+/* Premium micro-interactions & utility classes */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.dark-glass-panel {
+  background: rgba(13, 28, 42, 0.95);
+  backdrop-filter: blur(12px);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.gold-gradient-bg {
+  background: linear-gradient(135deg, #fad243 0%, #e2ab10 100%);
+}
+
+.blue-gradient-bg {
+  background: linear-gradient(135deg, #1d3e5c 0%, #0d1c2a 100%);
+}
+
+.blue-gold-border {
+  border-image: linear-gradient(to right, #1d3e5c, #e2ab10) 1;
+}
+
+/* Custom Scrollbar for dashboards */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
