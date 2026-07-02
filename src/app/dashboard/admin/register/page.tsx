@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   GRADES, MINISTRIES, STATES, KAUM, STATUS_JAWATAN, 
-  JENIS_KESALAHAN, PUNCA_KES 
+  JENIS_KESALAHAN, PUNCA_KES, INITIAL_CASES
 } from '@/lib/mock-data';
 import { CompleteCase } from '@/lib/types';
 import { 
@@ -18,6 +18,80 @@ export default function RegisterCase() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncLogs, setSyncLogs] = useState<string[]>([]);
   const [syncSuccess, setSyncSuccess] = useState(false);
+
+  // Autocomplete & Profile cache lookup states
+  const [existingCases, setExistingCases] = useState<CompleteCase[]>([]);
+  const [suggestions, setSuggestions] = useState<CompleteCase['officer'][]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [autofillSuccess, setAutofillSuccess] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem('spt_cases');
+    if (stored) {
+      setExistingCases(JSON.parse(stored));
+    } else {
+      setExistingCases(INITIAL_CASES);
+    }
+  }, []);
+
+  const handleNoKpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setFormData(prev => ({ ...prev, NO_KP: val }));
+
+    if (errors.NO_KP) {
+      setErrors(prev => {
+        const newErrs = { ...prev };
+        delete newErrs.NO_KP;
+        return newErrs;
+      });
+    }
+
+    if (val.length >= 3) {
+      // Filter unique officers matching the search
+      const uniqueMap = new Map<string, CompleteCase['officer']>();
+      existingCases.forEach(c => {
+        if (c.officer.NO_KP.includes(val)) {
+          uniqueMap.set(c.officer.NO_KP, c.officer);
+        }
+      });
+      const list = Array.from(uniqueMap.values());
+      setSuggestions(list);
+      setShowSuggestions(true);
+
+      // Auto-select if exactly 12-digit match is typed
+      const exactMatch = list.find(o => o.NO_KP === val);
+      if (exactMatch) {
+        selectOfficer(exactMatch);
+      }
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  const selectOfficer = (officer: CompleteCase['officer']) => {
+    setFormData(prev => ({
+      ...prev,
+      NAMA: officer.NAMA,
+      NO_KP: officer.NO_KP,
+      TARIKH_LAHIR: officer.TARIKH_LAHIR,
+      PILIHAN_UMUR_PERSARAAN: officer.PILIHAN_UMUR_PERSARAAN.toString(),
+      TARIKH_BERSARA: officer.TARIKH_BERSARA,
+      JANTINA: officer.JANTINA,
+      KAUM: officer.KAUM,
+      JAWATAN: officer.JAWATAN,
+      SKIM: officer.SKIM,
+      GRED: officer.GRED,
+      STATUS_JAWATAN: officer.STATUS_JAWATAN,
+      TEMPAT_BERTUGAS: officer.TEMPAT_BERTUGAS,
+      NEGERI: officer.NEGERI,
+      KEMENTERIAN: officer.KEMENTERIAN
+    }));
+    setSuggestions([]);
+    setShowSuggestions(false);
+    setAutofillSuccess(true);
+    setTimeout(() => setAutofillSuccess(false), 4500);
+  };
 
   // Form States
   const [formData, setFormData] = useState({
@@ -195,9 +269,21 @@ export default function RegisterCase() {
     // Save to local storage
     const newCase = formatPayload();
     const stored = localStorage.getItem('spt_cases');
-    const casesList = stored ? JSON.parse(stored) : [];
-    casesList.unshift(newCase);
-    localStorage.setItem('spt_cases', JSON.stringify(casesList));
+    const casesList: CompleteCase[] = stored ? JSON.parse(stored) : [];
+    
+    // Maintain database sync integrity by propagating profile updates
+    const updatedList = casesList.map(c => {
+      if (c.officer.NO_KP === newCase.officer.NO_KP) {
+        return {
+          ...c,
+          officer: { ...newCase.officer }
+        };
+      }
+      return c;
+    });
+
+    updatedList.unshift(newCase);
+    localStorage.setItem('spt_cases', JSON.stringify(updatedList));
 
     // Wait a moment and redirect
     setTimeout(() => {
@@ -250,6 +336,13 @@ export default function RegisterCase() {
         {currentStep === 1 && (
           <div className="space-y-6">
             <h3 className="text-base font-bold text-slate-800 border-b border-slate-100 pb-2.5">Langkah 1: Profil & Biodata Pegawai Awam</h3>
+
+            {autofillSuccess && (
+              <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4.5 rounded-2xl text-xs font-bold flex items-center gap-2 animate-fade-in shadow-sm">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
+                <span>Biodata pegawai berjaya dimuatkan dari rekod pangkalan data.</span>
+              </div>
+            )}
             
             <div className="grid md:grid-cols-2 gap-6">
               {/* Nama */}
@@ -269,19 +362,38 @@ export default function RegisterCase() {
               </div>
 
               {/* No KP */}
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 relative">
                 <label className="text-xs font-bold text-slate-500 block">No. Kad Pengenalan (Tanpa Sengkang)</label>
-                <input
-                  type="text"
-                  name="NO_KP"
-                  maxLength={12}
-                  value={formData.NO_KP}
-                  onChange={handleInputChange}
-                  placeholder="Contoh: 820412145533"
-                  className={`w-full px-4 py-3 rounded-xl border text-xs font-semibold focus:outline-none focus:border-gov-blue-500 transition-all ${
-                    errors.NO_KP ? 'border-red-500 bg-red-50/10' : 'border-slate-200'
-                  }`}
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="NO_KP"
+                    maxLength={12}
+                    value={formData.NO_KP}
+                    onChange={handleNoKpChange}
+                    placeholder="Contoh: 820412145533"
+                    className={`w-full px-4 py-3 rounded-xl border text-xs font-semibold focus:outline-none focus:border-gov-blue-500 transition-all ${
+                      errors.NO_KP ? 'border-red-500 bg-red-50/10' : 'border-slate-200'
+                    }`}
+                  />
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div className="absolute z-20 w-full bg-white border border-slate-200 rounded-xl shadow-lg mt-1 max-h-48 overflow-y-auto divide-y divide-slate-100">
+                      {suggestions.map((s) => (
+                        <div
+                          key={s.NO_KP}
+                          onClick={() => selectOfficer(s)}
+                          className="p-3 hover:bg-slate-50 cursor-pointer text-xs flex justify-between items-center transition-colors"
+                        >
+                          <div>
+                            <span className="font-bold text-slate-800 block">{s.NAMA}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">KP: {s.NO_KP}</span>
+                          </div>
+                          <span className="text-[9px] bg-gov-blue-50 text-gov-blue-700 px-2 py-0.5 rounded font-bold border border-gov-blue-100">Wujud</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 {errors.NO_KP && <span className="text-[10px] text-red-500 font-bold">{errors.NO_KP}</span>}
               </div>
 
