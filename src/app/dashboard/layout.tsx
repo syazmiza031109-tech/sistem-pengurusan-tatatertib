@@ -43,6 +43,7 @@ export default function DashboardLayout({
       role: 'Pegawai Kes',
       links: [
         { name: 'Papan Pemuka Kes', href: '/dashboard/admin', icon: LayoutDashboard },
+        { name: 'Senarai Kes (Carian)', href: '/dashboard/admin/cases', icon: Users },
         { name: 'Pendaftaran Kes Baru', href: '/dashboard/admin/register', icon: FilePlus2 },
       ]
     },
