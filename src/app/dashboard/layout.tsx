@@ -6,7 +6,7 @@ import { useAuth } from '@/components/auth-provider';
 import { 
   Shield, Users, Key, LogOut, LayoutDashboard, 
   FilePlus2, ClipboardCheck, Bell, CircleUserRound,
-  Menu, LineChart
+  Menu, LineChart, Presentation
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -124,6 +124,7 @@ export default function DashboardLayout({
         { name: 'Senarai Kes', href: '/dashboard/admin/cases', icon: Users },
         { name: 'Pendaftaran Kes Baru', href: '/dashboard/admin/register', icon: FilePlus2 },
         { name: 'Analitis Grafik', href: '/dashboard/admin/analytics', icon: LineChart },
+        { name: 'Pembentangan Kes', href: '/dashboard/admin/presentation', icon: Presentation },
       ]
     },
     {

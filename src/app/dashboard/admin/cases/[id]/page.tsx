@@ -37,6 +37,12 @@ export default function OfficerProfileDetail() {
   const [activeSubTab, setActiveSubTab] = useState<'senarai' | 'pembentangan'>('senarai');
   const [selectedCaseId, setSelectedCaseId] = useState<string>('');
 
+  // Google connectivity simulation states
+  const [connectedEmail, setConnectedEmail] = useState<string>('');
+  const [connectingEmail, setConnectingEmail] = useState<boolean>(false);
+  const [emailInput, setEmailInput] = useState<string>('syazmiza0304@gmail.com');
+  const [connectionLogs, setConnectionLogs] = useState<string[]>([]);
+
   // Editing Modals State
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showCaseModal, setShowCaseModal] = useState(false);
@@ -154,6 +160,33 @@ export default function OfficerProfileDetail() {
       setSyncMessage('Penyegerakan Berjaya! Google Sheets dan Data Studio (Looker Studio) telah dikemaskini.');
       setTimeout(() => setSyncMessage(null), 5000);
     }, 3800);
+  };
+
+  // Google connectivity simulator handler
+  const handleConnectGoogle = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!emailInput) return;
+    setConnectingEmail(true);
+    setConnectionLogs([]);
+
+    const logs = [
+      'Menghubungi Pelayan Google Workspace JPA...',
+      'Melakukan Pengesahan Token OAuth2...',
+      `Menyemak akses bagi akaun: ${emailInput}...`,
+      'Kebenaran Google Slides & Drive Diluluskan!'
+    ];
+
+    logs.forEach((log, index) => {
+      setTimeout(() => {
+        setConnectionLogs(prev => [...prev, `[OAuth] ${log}`]);
+        if (index === logs.length - 1) {
+          setTimeout(() => {
+            setConnectedEmail(emailInput);
+            setConnectingEmail(false);
+          }, 600);
+        }
+      }, (index + 1) * 800);
+    });
   };
 
   // Dynamic CSV formatting and export tool
@@ -528,7 +561,47 @@ export default function OfficerProfileDetail() {
           </div>
           <div className="grid md:grid-cols-12 gap-6 items-stretch">
             <div className="md:col-span-8 space-y-4">
-              {activeCase.metadata.URL_LINK_PP ? (
+              {!connectedEmail ? (
+                /* Simulated Google Auth Portal */
+                <div className="rounded-2xl bg-slate-50 border border-slate-200 p-8 text-center space-y-4 flex flex-col items-center justify-center aspect-video shadow-inner">
+                  <div className="h-12 w-12 rounded-full bg-gov-blue-50 text-gov-blue-700 flex items-center justify-center animate-pulse">
+                    <Database className="h-6 w-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-bold text-slate-800 font-sans">Uji Sambungan Google Slides Portal Tatatertib</h4>
+                    <p className="text-[11px] text-slate-500 max-w-md mx-auto">
+                      Sila hubungkan akaun Google Workspace JPA anda untuk memaparkan draf kertas cadangan slaid secara interaktif dalam sistem.
+                    </p>
+                  </div>
+                  
+                  {connectingEmail ? (
+                    <div className="w-full max-w-xs bg-slate-900 text-left font-mono text-[9px] p-4 rounded-xl border border-slate-700 text-slate-300 space-y-1 shadow-md">
+                      {connectionLogs.map((log, idx) => (
+                        <p key={idx} className="animate-fade-in text-emerald-400">{log}</p>
+                      ))}
+                      <p className="text-gov-gold-400 animate-pulse mt-1">[Proses] Mengesahkan...</p>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleConnectGoogle} className="flex gap-2.5 max-w-md w-full justify-center">
+                      <input
+                        type="email"
+                        value={emailInput}
+                        onChange={(e) => setEmailInput(e.target.value)}
+                        placeholder="Masukkan emel Google Workspace"
+                        className="px-4 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:border-gov-blue-500 bg-white min-w-[240px] font-bold text-slate-700"
+                        required
+                      />
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-gov-blue-700 hover:bg-gov-blue-800 text-white text-xs font-bold rounded-xl transition-all shadow cursor-pointer whitespace-nowrap hover:scale-[1.02]"
+                      >
+                        Hubung Google Account
+                      </button>
+                    </form>
+                  )}
+                </div>
+              ) : activeCase.metadata.URL_LINK_PP ? (
+                /* Embedded Google Slides Window */
                 <div className="relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-200 shadow-inner w-full aspect-video">
                   <iframe
                     src={getEmbedUrl(activeCase.metadata.URL_LINK_PP)}
@@ -538,6 +611,7 @@ export default function OfficerProfileDetail() {
                   ></iframe>
                 </div>
               ) : (
+                /* Slide Setup Fallback */
                 <div className="rounded-2xl bg-slate-50 border border-dashed border-slate-300 p-12 text-center space-y-3 flex flex-col items-center justify-center aspect-video">
                   <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
                     <Presentation className="h-6 w-6" />
@@ -589,6 +663,27 @@ export default function OfficerProfileDetail() {
                     )}
                   </div>
                 </div>
+              </div>
+              <div className="border-t border-slate-200/60 pt-4 space-y-2">
+                <span className="text-[9px] text-slate-400 font-bold block">Status Sambungan Google:</span>
+                {connectedEmail ? (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-2">
+                    <div className="flex items-center gap-2 text-emerald-800 text-[10px] font-bold">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                      <span className="truncate">{connectedEmail}</span>
+                    </div>
+                    <button
+                      onClick={() => setConnectedEmail('')}
+                      className="w-full text-center text-[9px] font-bold text-red-600 hover:text-red-700 underline cursor-pointer"
+                    >
+                      Putuskan Sambungan
+                    </button>
+                  </div>
+                ) : (
+                  <div className="bg-slate-100 border border-slate-200 rounded-xl p-3 text-[10px] text-slate-500 font-bold text-center">
+                    Akaun Belum Dihubungkan
+                  </div>
+                )}
               </div>
               <div className="border-t border-slate-200/60 pt-4 space-y-2">
                 <span className="text-[9px] text-slate-400 font-bold block">Urus Setia Kes Tatatertib:</span>
