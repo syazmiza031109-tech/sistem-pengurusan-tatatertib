@@ -9,8 +9,20 @@ import {
 import { 
   ArrowLeft, CircleUser, ExternalLink, Calendar, 
   MapPin, Database, FolderGit2,
-  Edit, CloudLightning, FileSpreadsheet, RefreshCw, X, Check
+  Edit, CloudLightning, FileSpreadsheet, RefreshCw, X, Check,
+  Presentation, Folder
 } from 'lucide-react';
+
+const getEmbedUrl = (url: string | undefined) => {
+  if (!url) return '';
+  if (url.includes('drive.google.com/file/d/')) {
+    return url.replace(/\/view\??.*/, '/preview');
+  }
+  if (url.includes('docs.google.com/presentation/d/')) {
+    return url.replace(/\/edit\??.*/, '/embed');
+  }
+  return url;
+};
 
 export default function OfficerProfileDetail() {
   const params = useParams();
@@ -20,6 +32,10 @@ export default function OfficerProfileDetail() {
   const [cases, setCases] = useState<CompleteCase[]>([]);
   const [officerCases, setOfficerCases] = useState<CompleteCase[]>([]);
   const [officerProfile, setOfficerProfile] = useState<CompleteCase['officer'] | null>(null);
+
+  // New tab state for case presentation and file table selection
+  const [activeSubTab, setActiveSubTab] = useState<'senarai' | 'pembentangan'>('senarai');
+  const [selectedCaseId, setSelectedCaseId] = useState<string>('');
 
   // Editing Modals State
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -45,6 +61,7 @@ export default function OfficerProfileDetail() {
       setOfficerCases(filtered);
       if (filtered.length > 0) {
         setOfficerProfile(filtered[0].officer);
+        setSelectedCaseId(filtered[0].metadata.NO_RUJ_FAIL_JPA);
       }
     }, 0);
   }, [id]);
@@ -218,6 +235,8 @@ export default function OfficerProfileDetail() {
     }
   };
 
+  const activeCase = officerCases.find(c => c.metadata.NO_RUJ_FAIL_JPA === selectedCaseId) || officerCases[0];
+
   return (
     <div className="space-y-8">
       {/* Save success banner */}
@@ -329,170 +348,259 @@ export default function OfficerProfileDetail() {
         </div>
       </div>
 
-      {/* CONTAINER 2: Case Details (Vertically and Horizontally Scrollable Table) */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-        {/* Container Header */}
-        <div className="p-6 border-b border-slate-200 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <FolderGit2 className="h-5 w-5 text-gov-blue-700" />
-            <div>
-              <h3 className="text-sm font-bold text-slate-800">Senarai Fail Kes Tatatertib Berdaftar</h3>
-              <p className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Senarai rekod aduan dan tindakan undang-undang rasmi</p>
+      {/* Tab Navigation Menu */}
+      <div className="flex border-b border-slate-200 gap-6">
+        <button
+          onClick={() => setActiveSubTab('senarai')}
+          className={`pb-4 text-xs font-bold border-b-2 transition-all cursor-pointer ${
+            activeSubTab === 'senarai'
+              ? 'border-gov-blue-700 text-gov-blue-700'
+              : 'border-transparent text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          Senarai Fail Kes Tatatertib
+        </button>
+        <button
+          onClick={() => setActiveSubTab('pembentangan')}
+          className={`pb-4 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
+            activeSubTab === 'pembentangan'
+              ? 'border-gov-blue-700 text-gov-blue-700'
+              : 'border-transparent text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          <Presentation className="h-4 w-4" />
+          Pembentangan Kes (Google Slides)
+        </button>
+      </div>
+
+      {activeSubTab === 'senarai' && (
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+          <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <FolderGit2 className="h-5 w-5 text-gov-blue-700" />
+              <div>
+                <h3 className="text-sm font-bold text-slate-800">Senarai Fail Kes Tatatertib Berdaftar</h3>
+                <p className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Senarai rekod aduan dan tindakan undang-undang rasmi</p>
+              </div>
             </div>
+            <span className="bg-gov-blue-50 text-gov-blue-700 px-3 py-1 rounded-full text-[10px] font-bold border border-gov-blue-100">
+              {officerCases.length} Fail Kes
+            </span>
           </div>
-          <span className="bg-gov-blue-50 text-gov-blue-700 px-3 py-1 rounded-full text-[10px] font-bold border border-gov-blue-100">
-            {officerCases.length} Fail Kes
-          </span>
-        </div>
 
-        {/* Scrollable Table Wrapper */}
-        <div className="p-6">
-          <div className="overflow-auto max-h-[380px] border border-slate-200 rounded-2xl shadow-inner scrollbar-thin scrollbar-thumb-slate-300">
-            <table className="w-full text-left border-collapse min-w-[1550px]">
-              <thead>
-                <tr className="bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-200 sticky top-0 z-10">
-                  <th className="py-4 px-6 bg-slate-50">No. Rujukan Fail JPA</th>
-                  <th className="py-4 px-6 bg-slate-50">Kategori Kesalahan</th>
-                  <th className="py-4 px-6 bg-slate-50">Fasa Aliran Utama</th>
-                  <th className="py-4 px-6 bg-slate-50">Ringkasan Ringkas Kes</th>
-                  <th className="py-4 px-6 bg-slate-50">Punca Kes</th>
-                  <th className="py-4 px-6 bg-slate-50">Ulasan Urus Setia</th>
-                  <th className="py-4 px-6 bg-slate-50">Status HRMIS</th>
-                  <th className="py-4 px-6 bg-slate-50">Pegawai Kes / SME / Penyemak</th>
-                  <th className="py-4 px-6 bg-slate-50">Tarikh Penerimaan Perakuan</th>
-                  <th className="py-4 px-6 bg-slate-50">Dokumen / Pautan Google Drive</th>
-                  <th className="py-4 px-6 bg-slate-50 text-center sticky right-0 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)] border-l border-slate-100">Tindakan</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700 bg-white">
-                {officerCases.length > 0 ? (
-                  officerCases.map((c) => (
-                    <tr key={c.metadata.NO_RUJ_FAIL_JPA} className="hover:bg-slate-50/50 transition-colors">
-                      {/* No Ruj Fail JPA */}
-                      <td className="py-4.5 px-6 font-mono text-gov-blue-700 font-bold sticky left-0 bg-white hover:bg-slate-50 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] border-r border-slate-100">
-                        {c.metadata.NO_RUJ_FAIL_JPA}
-                      </td>
-
-                      {/* Kategori Kesalahan */}
-                      <td className="py-4.5 px-6">
-                        <div className="flex flex-wrap gap-1.5 max-w-[200px]">
-                          {c.details.JENIS_KESALAHAN.map((jk, idx) => (
-                            <span key={idx} className="bg-slate-100 text-slate-600 text-[9px] px-2 py-0.5 rounded-full block border border-slate-200">
-                              {jk}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-
-                      {/* Fasa Aliran Utama */}
-                      <td className="py-4.5 px-6">
-                        <span className={`inline-block whitespace-nowrap px-2.5 py-1 rounded-full border text-[9px] font-bold uppercase tracking-wider ${getStatusBadge(c.workflow.STATUS_KATEGORI_UTAMA)}`}>
-                          {c.workflow.STATUS_KATEGORI_UTAMA}
-                        </span>
-                      </td>
-
-                      {/* Ringkasan Kes */}
-                      <td className="py-4.5 px-6 max-w-[280px]">
-                        <span className="text-slate-600 line-clamp-3 leading-relaxed font-normal" title={c.details.RINGKASAN_KESALAHAN}>
-                          {c.details.RINGKASAN_KESALAHAN}
-                        </span>
-                      </td>
-
-                      {/* Punca Kes */}
-                      <td className="py-4.5 px-6 font-bold text-slate-600">
-                        {c.details.PUNCA_KES}
-                      </td>
-
-                      {/* Ulasan Urus Setia */}
-                      <td className="py-4.5 px-6 max-w-[300px]">
-                        <p className="text-slate-500 line-clamp-3 leading-relaxed font-normal" title={c.details.ULASAN_URUS_SETIA}>
-                          {c.details.ULASAN_URUS_SETIA}
-                        </p>
-                      </td>
-
-                      {/* Status HRMIS */}
-                      <td className="py-4.5 px-6">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${getHrmisBadge(c.workflow.STATUS_KEMASKINI_KES_DI_HRMIS)}`}>
-                          {c.workflow.STATUS_KEMASKINI_KES_DI_HRMIS}
-                        </span>
-                      </td>
-
-                      {/* Pegawai Kes / SME / Penyemak */}
-                      <td className="py-4.5 px-6 text-slate-600 space-y-0.5">
-                        {c.workflow.PEGAWAI_KES && <span className="block text-[10px] font-bold"><strong className="text-[8px] text-slate-400 block">PEG. KES:</strong> {c.workflow.PEGAWAI_KES}</span>}
-                        {c.workflow.SME && <span className="block text-[10px]"><strong className="text-[8px] text-slate-400 block">SME:</strong> {c.workflow.SME}</span>}
-                        {c.workflow.PEGAWAI_PENYEMAK && <span className="block text-[10px]"><strong className="text-[8px] text-slate-400 block">PENYEMAK:</strong> {c.workflow.PEGAWAI_PENYEMAK}</span>}
-                      </td>
-
-                      {/* Tarikh Penerimaan */}
-                      <td className="py-4.5 px-6 font-mono text-[10px] text-slate-500">
-                        {c.workflow.TARIKH_TERIMA_PERAKUAN || '-'}
-                      </td>
-
-                      {/* Documents / Google Drive */}
-                      <td className="py-4.5 px-6">
-                        <div className="flex flex-col gap-1.5 max-w-[200px]">
-                          {c.metadata.URL_LINK_GD && (
-                            <a 
-                              href={c.metadata.URL_LINK_GD}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-2 py-1 text-[9px] font-bold bg-slate-100 hover:bg-gov-blue-50 text-slate-600 hover:text-gov-blue-700 rounded-lg flex items-center justify-between border border-slate-200 transition-colors"
-                            >
-                              <span>Folder Fail (Drive)</span>
-                              <ExternalLink className="h-3 w-3 shrink-0" />
-                            </a>
-                          )}
-                          {c.metadata.URL_LINK_PP && (
-                            <a 
-                              href={c.metadata.URL_LINK_PP}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-2 py-1 text-[9px] font-bold bg-slate-100 hover:bg-gov-blue-50 text-slate-600 hover:text-gov-blue-700 rounded-lg flex items-center justify-between border border-slate-200 transition-colors"
-                            >
-                              <span>Kertas Makluman (PP)</span>
-                              <ExternalLink className="h-3 w-3 shrink-0" />
-                            </a>
-                          )}
-                          {c.metadata.URL_LINK_SP && (
-                            <a 
-                              href={c.metadata.URL_LINK_SP}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-2 py-1 text-[9px] font-bold bg-slate-100 hover:bg-gov-blue-50 text-slate-600 hover:text-gov-blue-700 rounded-lg flex items-center justify-between border border-slate-200 transition-colors"
-                            >
-                              <span>Surat Pertuduhan (SP)</span>
-                              <ExternalLink className="h-3 w-3 shrink-0" />
-                            </a>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* EDIT ACTION BUTTON */}
-                      <td className="py-4.5 px-6 text-center sticky right-0 bg-white hover:bg-slate-50 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)] border-l border-slate-100">
-                        <button
-                          onClick={() => openEditCaseModal(c)}
-                          className="bg-gov-blue-50 text-gov-blue-800 hover:bg-gov-blue-700 hover:text-white border border-gov-blue-200 px-3 py-1.5 rounded-xl font-bold transition-all duration-200 flex items-center gap-1 cursor-pointer"
-                        >
-                          <Edit className="h-3 w-3" />
-                          <span>Ubah</span>
-                        </button>
+          <div className="p-6">
+            <div className="overflow-auto max-h-[380px] border border-slate-200 rounded-2xl shadow-inner scrollbar-thin scrollbar-thumb-slate-300">
+              <table className="w-full text-left border-collapse min-w-[1550px]">
+                <thead>
+                  <tr className="bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-200 sticky top-0 z-10">
+                    <th className="py-4 px-6 bg-slate-50">No. Rujukan Fail JPA</th>
+                    <th className="py-4 px-6 bg-slate-50">Kategori Kesalahan</th>
+                    <th className="py-4 px-6 bg-slate-50">Fasa Aliran Utama</th>
+                    <th className="py-4 px-6 bg-slate-50">Ringkasan Ringkas Kes</th>
+                    <th className="py-4 px-6 bg-slate-50">Punca Kes</th>
+                    <th className="py-4 px-6 bg-slate-50">Ulasan Urus Setia</th>
+                    <th className="py-4 px-6 bg-slate-50">Status HRMIS</th>
+                    <th className="py-4 px-6 bg-slate-50">Pegawai Kes / SME / Penyemak</th>
+                    <th className="py-4 px-6 bg-slate-50">Tarikh Penerimaan Perakuan</th>
+                    <th className="py-4 px-6 bg-slate-50">Dokumen / Pautan Google Drive</th>
+                    <th className="py-4 px-6 bg-slate-50 text-center sticky right-0 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)] border-l border-slate-100">Tindakan</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700 bg-white">
+                  {officerCases.length > 0 ? (
+                    officerCases.map((c) => (
+                      <tr key={c.metadata.NO_RUJ_FAIL_JPA} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="py-4.5 px-6 font-mono text-gov-blue-700 font-bold sticky left-0 bg-white hover:bg-slate-50 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] border-r border-slate-100">
+                          {c.metadata.NO_RUJ_FAIL_JPA}
+                        </td>
+                        <td className="py-4.5 px-6">
+                          <div className="flex flex-wrap gap-1.5 max-w-[200px]">
+                            {c.details.JENIS_KESALAHAN.map((jk, idx) => (
+                              <span key={idx} className="bg-slate-100 text-slate-600 text-[9px] px-2 py-0.5 rounded-full block border border-slate-200">
+                                {jk}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="py-4.5 px-6">
+                          <span className={`inline-block whitespace-nowrap px-2.5 py-1 rounded-full border text-[9px] font-bold uppercase tracking-wider ${getStatusBadge(c.workflow.STATUS_KATEGORI_UTAMA)}`}>
+                            {c.workflow.STATUS_KATEGORI_UTAMA}
+                          </span>
+                        </td>
+                        <td className="py-4.5 px-6 max-w-[280px]">
+                          <span className="text-slate-600 line-clamp-3 leading-relaxed font-normal" title={c.details.RINGKASAN_KESALAHAN}>
+                            {c.details.RINGKASAN_KESALAHAN}
+                          </span>
+                        </td>
+                        <td className="py-4.5 px-6 font-bold text-slate-600">
+                          {c.details.PUNCA_KES}
+                        </td>
+                        <td className="py-4.5 px-6 max-w-[300px]">
+                          <p className="text-slate-500 line-clamp-3 leading-relaxed font-normal" title={c.details.ULASAN_URUS_SETIA}>
+                            {c.details.ULASAN_URUS_SETIA}
+                          </p>
+                        </td>
+                        <td className="py-4.5 px-6">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${getHrmisBadge(c.workflow.STATUS_KEMASKINI_KES_DI_HRMIS)}`}>
+                            {c.workflow.STATUS_KEMASKINI_KES_DI_HRMIS}
+                          </span>
+                        </td>
+                        <td className="py-4.5 px-6 text-slate-600 space-y-0.5">
+                          {c.workflow.PEGAWAI_KES && <span className="block text-[10px] font-bold"><strong className="text-[8px] text-slate-400 block">PEG. KES:</strong> {c.workflow.PEGAWAI_KES}</span>}
+                          {c.workflow.SME && <span className="block text-[10px]"><strong className="text-[8px] text-slate-400 block">SME:</strong> {c.workflow.SME}</span>}
+                          {c.workflow.PEGAWAI_PENYEMAK && <span className="block text-[10px]"><strong className="text-[8px] text-slate-400 block">PENYEMAK:</strong> {c.workflow.PEGAWAI_PENYEMAK}</span>}
+                        </td>
+                        <td className="py-4.5 px-6 font-mono text-[10px] text-slate-500">
+                          {c.workflow.TARIKH_TERIMA_PERAKUAN || '-'}
+                        </td>
+                        <td className="py-4.5 px-6">
+                          <div className="flex flex-col gap-1.5 max-w-[200px]">
+                            {c.metadata.URL_LINK_GD && (
+                              <a href={c.metadata.URL_LINK_GD} target="_blank" rel="noopener noreferrer" className="px-2 py-1 text-[9px] font-bold bg-slate-100 hover:bg-gov-blue-50 text-slate-600 hover:text-gov-blue-700 rounded-lg flex items-center justify-between border border-slate-200 transition-colors">
+                                <span>Folder Fail (Drive)</span>
+                                <ExternalLink className="h-3 w-3 shrink-0" />
+                              </a>
+                            )}
+                            {c.metadata.URL_LINK_PP && (
+                              <a href={c.metadata.URL_LINK_PP} target="_blank" rel="noopener noreferrer" className="px-2 py-1 text-[9px] font-bold bg-slate-100 hover:bg-gov-blue-50 text-slate-600 hover:text-gov-blue-700 rounded-lg flex items-center justify-between border border-slate-200 transition-colors">
+                                <span>Kertas Makluman (PP)</span>
+                                <ExternalLink className="h-3 w-3 shrink-0" />
+                              </a>
+                            )}
+                            {c.metadata.URL_LINK_SP && (
+                              <a href={c.metadata.URL_LINK_SP} target="_blank" rel="noopener noreferrer" className="px-2 py-1 text-[9px] font-bold bg-slate-100 hover:bg-gov-blue-50 text-slate-600 hover:text-gov-blue-700 rounded-lg flex items-center justify-between border border-slate-200 transition-colors">
+                                <span>Surat Pertuduhan (SP)</span>
+                                <ExternalLink className="h-3 w-3 shrink-0" />
+                              </a>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-4.5 px-6 text-center sticky right-0 bg-white hover:bg-slate-50 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)] border-l border-slate-100">
+                          <button
+                            onClick={() => openEditCaseModal(c)}
+                            className="bg-gov-blue-50 text-gov-blue-800 hover:bg-gov-blue-700 hover:text-white border border-gov-blue-200 px-3 py-1.5 rounded-xl font-bold transition-all duration-200 flex items-center gap-1 cursor-pointer"
+                          >
+                            <Edit className="h-3 w-3" />
+                            <span>Ubah</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={11} className="py-12 text-center text-slate-400 font-semibold">
+                        <Database className="h-8 w-8 mx-auto text-slate-300 mb-2.5" />
+                        <span>Tiada sebarang rekod kes bagi pegawai ini.</span>
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={11} className="py-12 text-center text-slate-400 font-semibold">
-                      <Database className="h-8 w-8 mx-auto text-slate-300 mb-2.5" />
-                      <span>Tiada sebarang rekod kes bagi pegawai ini.</span>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {activeSubTab === 'pembentangan' && activeCase && (
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-6 space-y-6 animate-fade-in">
+          <div className="border-b border-slate-100 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-2.5">
+              <Presentation className="h-5 w-5 text-gov-blue-700" />
+              <div>
+                <h3 className="text-sm font-bold text-slate-800">Urus Setia Pembentangan Slaid Kes</h3>
+                <p className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Paparan Window Interaktif Google Workspace</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <span className="text-xs text-slate-500 font-bold">Pilih Fail Kes:</span>
+              <select
+                value={selectedCaseId}
+                onChange={(e) => setSelectedCaseId(e.target.value)}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-gov-blue-500 transition-all bg-slate-50 cursor-pointer"
+              >
+                {officerCases.map((c) => (
+                  <option key={c.metadata.NO_RUJ_FAIL_JPA} value={c.metadata.NO_RUJ_FAIL_JPA}>
+                    {c.metadata.NO_RUJ_FAIL_JPA} ({c.workflow.STATUS_KATEGORI_UTAMA})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="grid md:grid-cols-12 gap-6 items-stretch">
+            <div className="md:col-span-8 space-y-4">
+              {activeCase.metadata.URL_LINK_PP ? (
+                <div className="relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-200 shadow-inner w-full aspect-video">
+                  <iframe
+                    src={getEmbedUrl(activeCase.metadata.URL_LINK_PP)}
+                    className="absolute inset-0 w-full h-full border-0"
+                    allowFullScreen
+                    loading="lazy"
+                  ></iframe>
+                </div>
+              ) : (
+                <div className="rounded-2xl bg-slate-50 border border-dashed border-slate-300 p-12 text-center space-y-3 flex flex-col items-center justify-center aspect-video">
+                  <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                    <Presentation className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-700">Pautan Slaid Tidak Hubung</h4>
+                    <p className="text-[10px] text-slate-400 max-w-xs mx-auto mt-1">Kes ini belum mempunyai pautan Google Slides (Kertas Makluman / Cadangan) berdaftar di JPA.</p>
+                  </div>
+                </div>
+              )}
+              <div className="p-4 bg-gov-blue-50/50 border border-gov-blue-100/50 rounded-2xl flex items-start gap-3">
+                <Database className="h-4.5 w-4.5 text-gov-blue-700 mt-0.5 shrink-0" />
+                <div className="space-y-1">
+                  <span className="text-[10px] font-extrabold text-gov-blue-900 block">Autentikasi Kredensial SSO Google Workspace</span>
+                  <p className="text-[9px] text-slate-500 font-medium leading-relaxed">Sesi pembentangan di atas disegerakkan dengan e-mel rasmi penjawat awam secara Single-Sign-On (SSO). Kebenaran membaca dan mengedit draf slaid adalah terikat kepada tetapan kebenaran Google Workspace & Drive rasmi anda.</p>
+                </div>
+              </div>
+            </div>
+            <div className="md:col-span-4 bg-slate-50 border border-slate-200/80 rounded-2xl p-5 flex flex-col justify-between space-y-4">
+              <div className="space-y-4">
+                <div>
+                  <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Fasa Kes Semasa</span>
+                  <span className="text-xs font-extrabold text-slate-800 block mt-0.5">{activeCase.workflow.STATUS_KATEGORI_UTAMA}</span>
+                </div>
+                <div>
+                  <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Kertas Cadangan / Slaid MKSN</span>
+                  <span className="text-xs font-bold text-slate-700 block mt-0.5">{activeCase.workflow.STATUS_DRAF_PP_DAN_SLAID_MKSN || 'Sedia Untuk Mesyuarat'}</span>
+                </div>
+                <div className="border-t border-slate-200/60 pt-4 space-y-3">
+                  <span className="text-[10px] font-bold text-slate-800 block uppercase">Pautan Integrasi Luar</span>
+                  <div className="space-y-1.5">
+                    {activeCase.metadata.URL_LINK_GD && (
+                      <a href={activeCase.metadata.URL_LINK_GD} target="_blank" rel="noreferrer" className="w-full flex items-center justify-between p-2.5 bg-white border border-slate-200 hover:border-gov-blue-500 hover:text-gov-blue-700 text-[10px] font-bold rounded-xl transition-all text-slate-600 group">
+                        <span className="flex items-center gap-2">
+                          <Folder className="h-4 w-4 text-amber-500" />
+                          Folder Google Drive Fail Kes
+                        </span>
+                        <ExternalLink className="h-3 w-3 text-slate-400 group-hover:text-gov-blue-700" />
+                      </a>
+                    )}
+                    {activeCase.metadata.URL_LINK_PP && (
+                      <a href={activeCase.metadata.URL_LINK_PP} target="_blank" rel="noreferrer" className="w-full flex items-center justify-between p-2.5 bg-white border border-slate-200 hover:border-gov-blue-500 hover:text-gov-blue-700 text-[10px] font-bold rounded-xl transition-all text-slate-600 group">
+                        <span className="flex items-center gap-2">
+                          <Presentation className="h-4 w-4 text-gov-blue-700" />
+                          Buka Google Slides Penuh
+                        </span>
+                        <ExternalLink className="h-3 w-3 text-slate-400 group-hover:text-gov-blue-700" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="border-t border-slate-200/60 pt-4 space-y-2">
+                <span className="text-[9px] text-slate-400 font-bold block">Urus Setia Kes Tatatertib:</span>
+                <div className="p-2.5 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-700 flex items-center gap-2">
+                  <div className="h-5 w-5 bg-gov-gold-100 text-gov-gold-800 rounded-full flex items-center justify-center font-bold text-[8px]">OA</div>
+                  <span className="truncate">{activeCase.workflow.PEGAWAI_KES}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* CONTAINER 3: Google Sheets & Data Studio Integration Sync Panel */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8 flex flex-col md:flex-row gap-8 items-center justify-between">
