@@ -461,7 +461,7 @@ export default function PersaraanCharts({ cases }: PersaraanChartsProps) {
 
         {/* Detailed Table Grid */}
         <div className="overflow-x-auto overflow-y-auto max-h-[500px] rounded-2xl border border-slate-200 custom-scrollbar">
-          <table className="w-full text-left border-collapse text-[11px]">
+          <table className="w-full text-left border-collapse text-[11px] min-w-[1700px]">
             <thead>
               {/* Blue header color matching Data Studio */}
               <tr className="bg-gov-blue-700 text-white font-bold uppercase tracking-wider border-b border-slate-200 sticky top-0 z-10 shadow-[0_1px_0_0_rgba(29,62,92,1)]">
@@ -470,11 +470,11 @@ export default function PersaraanCharts({ cases }: PersaraanChartsProps) {
                 <th className="px-4 py-3.5 w-24 bg-gov-blue-700">Kategori LTT</th>
                 <th className="px-4 py-3.5 w-60 bg-gov-blue-700">Nama / KP / Jawatan / Gred</th>
                 <th className="px-4 py-3.5 w-24 bg-gov-blue-700">Tarikh Bersara</th>
-                <th className="px-4 py-3.5 bg-gov-blue-700">Ringkasan Kesalahan</th>
-                <th className="px-4 py-3.5 bg-gov-blue-700">Ulasan Urus Setia</th>
-                <th className="px-3 py-3.5 text-center bg-gov-blue-700">Docs</th>
-                <th className="px-4 py-3.5 bg-gov-blue-700">Status</th>
-                <th className="px-4 py-3.5 bg-gov-blue-700">Pegawai Kes</th>
+                <th className="px-4 py-3.5 w-80 bg-gov-blue-700">Ringkasan Kesalahan</th>
+                <th className="px-4 py-3.5 w-96 bg-gov-blue-700">Ulasan Urus Setia</th>
+                <th className="px-3 py-3.5 w-20 text-center bg-gov-blue-700">Docs</th>
+                <th className="px-4 py-3.5 w-28 bg-gov-blue-700">Status</th>
+                <th className="px-4 py-3.5 w-48 bg-gov-blue-700">Pegawai Kes</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-600 font-medium">
