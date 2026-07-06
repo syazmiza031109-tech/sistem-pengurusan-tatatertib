@@ -278,7 +278,7 @@ export default function DashboardLayout({
         </header>
 
         {/* Scrollable container */}
-        <main className="flex-1 overflow-y-auto p-8 max-w-7xl w-full mx-auto animate-fade-in">
+        <main className="flex-1 overflow-y-auto p-8 max-w-[1700px] w-full mx-auto animate-fade-in">
           {children}
         </main>
       </div>
