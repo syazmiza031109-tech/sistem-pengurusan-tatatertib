@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { CompleteCase } from '@/lib/types';
 import { INITIAL_CASES } from '@/lib/mock-data';
 import { 
-  Search, Filter, FolderOpen, Database, UserCheck, ShieldAlert
+  Search, Filter, Database, UserCheck
 } from 'lucide-react';
 
 export default function CasesDirectory() {
@@ -18,12 +18,14 @@ export default function CasesDirectory() {
   useEffect(() => {
     // Load from localStorage or seed
     const stored = localStorage.getItem('spt_cases');
-    if (stored) {
-      setCases(JSON.parse(stored));
-    } else {
-      localStorage.setItem('spt_cases', JSON.stringify(INITIAL_CASES));
-      setCases(INITIAL_CASES);
-    }
+    setTimeout(() => {
+      if (stored) {
+        setCases(JSON.parse(stored));
+      } else {
+        localStorage.setItem('spt_cases', JSON.stringify(INITIAL_CASES));
+        setCases(INITIAL_CASES);
+      }
+    }, 0);
   }, []);
 
   const filteredCases = cases.filter(c => {

@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { CompleteCase } from '@/lib/types';
 import { INITIAL_CASES, KEPUTUSAN_PERTUDUHAN } from '@/lib/mock-data';
 import { 
-  Key, UserCheck, CheckCircle2, AlertOctagon, HelpCircle, 
-  FileSignature, Send, ExternalLink, RefreshCw, Database, ShieldAlert, FileText
+  Key, CheckCircle2, AlertOctagon, HelpCircle, 
+  FileSignature, ExternalLink, RefreshCw, Database, ShieldAlert, FileText
 } from 'lucide-react';
 
 export default function ExecutiveDashboard() {
@@ -24,12 +24,14 @@ export default function ExecutiveDashboard() {
 
   useEffect(() => {
     const stored = localStorage.getItem('spt_cases');
-    if (stored) {
-      setCases(JSON.parse(stored));
-    } else {
-      localStorage.setItem('spt_cases', JSON.stringify(INITIAL_CASES));
-      setCases(INITIAL_CASES);
-    }
+    setTimeout(() => {
+      if (stored) {
+        setCases(JSON.parse(stored));
+      } else {
+        localStorage.setItem('spt_cases', JSON.stringify(INITIAL_CASES));
+        setCases(INITIAL_CASES);
+      }
+    }, 0);
   }, []);
 
   // Filter cases that are in "Surat Pertuduhan (SP)" state (meaning representation is received and ready for trial)
@@ -66,7 +68,7 @@ export default function ExecutiveDashboard() {
             ...c.workflow,
             STATUS_KATEGORI: 'E04a PH - JK2T - Urusetia',
             STATUS_KATEGORI_UTAMA: 'Penyerahan Hukuman & Keputusan Lembaga (PH/LTT)', // Step 5.0
-            STATUS_KEMASKINI_KES_DI_HRMIS: 'SKUpdated' as any, // Sync status updated
+            STATUS_KEMASKINI_KES_DI_HRMIS: 'SK Updated' as const, // Sync status updated
             KEPUTUSAN_PERTUDUHAN: hukuman,
             TARIKH_BORANG_KEPUTUSAN_LTT: new Date().toISOString().split('T')[0],
             TARIKH_MLTT: new Date().toISOString().split('T')[0],

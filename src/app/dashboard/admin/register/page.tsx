@@ -8,9 +8,17 @@ import {
 } from '@/lib/mock-data';
 import { CompleteCase } from '@/lib/types';
 import { 
-  ChevronRight, ChevronLeft, Send, CheckCircle2, ShieldCheck, 
+  ChevronRight, ChevronLeft, Send, CheckCircle2, 
   Database, User, Info, FileCode2, ExternalLink
 } from 'lucide-react';
+
+function generateMockMetadata() {
+  return {
+    BIL: Date.now(),
+    NO_RUJ_FAIL_JPA: `JPA.C.P.100-2/4/${Math.floor(Math.random() * 90) + 10}(${Math.floor(Math.random() * 90) + 10})`,
+    BIL_IKUT_SUSUNAN_PAPER: `2026/${Math.floor(Math.random() * 9) + 1}/${Math.floor(Math.random() * 28) + 1}`
+  };
+}
 
 export default function RegisterCase() {
   const router = useRouter();
@@ -25,14 +33,24 @@ export default function RegisterCase() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [autofillSuccess, setAutofillSuccess] = useState(false);
 
+  // Cache generated metadata to ensure purity during render passes
+  const [generatedMetadata, setGeneratedMetadata] = useState<{
+    BIL: number;
+    NO_RUJ_FAIL_JPA: string;
+    BIL_IKUT_SUSUNAN_PAPER: string;
+  } | null>(null);
+
   useEffect(() => {
     const stored = localStorage.getItem('spt_cases');
-    if (stored) {
-      setExistingCases(JSON.parse(stored));
-    } else {
-      setExistingCases(INITIAL_CASES);
-    }
+    setTimeout(() => {
+      if (stored) {
+        setExistingCases(JSON.parse(stored));
+      } else {
+        setExistingCases(INITIAL_CASES);
+      }
+    }, 0);
   }, []);
+
 
   const handleNoKpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -179,6 +197,9 @@ export default function RegisterCase() {
 
   const handleNext = () => {
     if (validateStep(currentStep)) {
+      if (currentStep === 2 && !generatedMetadata) {
+        setGeneratedMetadata(generateMockMetadata());
+      }
       setCurrentStep(prev => prev + 1);
     }
   };
@@ -188,15 +209,18 @@ export default function RegisterCase() {
   };
 
   const formatPayload = () => {
-    // Generates a mock system metadata reference
-    const refId = `JPA.C.P.100-2/4/${Math.floor(Math.random() * 90) + 10}(${Math.floor(Math.random() * 90) + 10})`;
-    const docSeq = `2026/${Math.floor(Math.random() * 9) + 1}/${Math.floor(Math.random() * 28) + 1}`;
+    // Generates a mock system metadata reference using cached state to prevent impure random numbers during render
+    const meta = generatedMetadata || {
+      BIL: 0,
+      NO_RUJ_FAIL_JPA: 'JPA.C.P.100-2/4/PENDING',
+      BIL_IKUT_SUSUNAN_PAPER: '2026/PENDING'
+    };
     
     const payload: CompleteCase = {
       metadata: {
-        BIL: Date.now(),
-        NO_RUJ_FAIL_JPA: refId,
-        BIL_IKUT_SUSUNAN_PAPER: docSeq,
+        BIL: meta.BIL,
+        NO_RUJ_FAIL_JPA: meta.NO_RUJ_FAIL_JPA,
+        BIL_IKUT_SUSUNAN_PAPER: meta.BIL_IKUT_SUSUNAN_PAPER,
         URL_LINK_GD: formData.URL_LINK_GD,
         URL_LINK_LSPRM_LPBI_ADUAN: formData.URL_LINK_LSPRM_LPBI_ADUAN || undefined,
         URL_LINK_PP: '',
@@ -306,7 +330,6 @@ export default function RegisterCase() {
           { step: 2, label: 'Perincian Kes', icon: Info },
           { step: 3, label: 'Pengesahan & Sync', icon: Database },
         ].map((s, idx) => {
-          const Icon = s.icon;
           const isActive = currentStep === s.step;
           const isCompleted = currentStep > s.step;
           return (

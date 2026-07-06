@@ -4,11 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { CompleteCase } from '@/lib/types';
 import { 
-  INITIAL_CASES, GRADES, MINISTRIES, STATES, KAUM, STATUS_JAWATAN, PUNCA_KES, JENIS_KESALAHAN 
+  INITIAL_CASES, GRADES, MINISTRIES, STATES, KAUM, STATUS_JAWATAN, PUNCA_KES 
 } from '@/lib/mock-data';
 import { 
-  ArrowLeft, CircleUser, FileText, ExternalLink, Calendar, 
-  MapPin, ShieldAlert, Database, CheckSquare, FolderGit2,
+  ArrowLeft, CircleUser, ExternalLink, Calendar, 
+  MapPin, Database, FolderGit2,
   Edit, CloudLightning, FileSpreadsheet, RefreshCw, X, Check
 } from 'lucide-react';
 
@@ -38,14 +38,15 @@ export default function OfficerProfileDetail() {
   useEffect(() => {
     const stored = localStorage.getItem('spt_cases');
     const allCases: CompleteCase[] = stored ? JSON.parse(stored) : INITIAL_CASES;
-    setCases(allCases);
-
     const filtered = allCases.filter(c => c.officer.NO_KP === id);
-    setOfficerCases(filtered);
 
-    if (filtered.length > 0) {
-      setOfficerProfile(filtered[0].officer);
-    }
+    setTimeout(() => {
+      setCases(allCases);
+      setOfficerCases(filtered);
+      if (filtered.length > 0) {
+        setOfficerProfile(filtered[0].officer);
+      }
+    }, 0);
   }, [id]);
 
   // Form Initializers

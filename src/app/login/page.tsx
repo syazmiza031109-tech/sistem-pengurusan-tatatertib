@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { 
   Shield, Mail, Lock, Eye, EyeOff, AlertCircle, 
   ArrowLeft, UserCheck, ShieldAlert, Key, HelpCircle,
-  CheckCircle2, ChevronRight
+  CheckCircle2
 } from 'lucide-react';
 import Link from 'next/link';
 

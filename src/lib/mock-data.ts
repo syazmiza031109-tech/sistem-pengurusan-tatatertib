@@ -185,7 +185,7 @@ export const INITIAL_CASES: CompleteCase[] = [
       NO_KP: '820412145533',
       TARIKH_LAHIR: '12-APR-1982',
       PILIHAN_UMUR_PERSARAAN: 60,
-      TARIKH_BERSARA: '12-APR-2042',
+      TARIKH_BERSARA: '31-AUG-2026',
       JANTINA: 'L',
       KAUM: 'MELAYU',
       JAWATAN: 'Pegawai Teknologi Maklumat',
@@ -200,14 +200,14 @@ export const INITIAL_CASES: CompleteCase[] = [
       KESALAHAN_ALL: 'Pegawai didapati tidak hadir bertugas selama 14 hari berturut-turut bermula dari 2 Mac 2026 hingga 15 Mac 2026 tanpa sebarang cuti atau kebenaran terlebih dahulu, serta gagal mengemukakan sijil sakit yang sah.',
       JENIS_KESALAHAN: ['Tidak Hadir Bertugas', 'Ingkar Perintah'],
       RINGKASAN_KESALAHAN: 'Ketidakhadiran bertugas tanpa cuti/kebenaran berturut-turut selama 14 hari.',
-      ULASAN_URUS_SETIA: 'Urus Setia mendapati pegawai tidak mempunyai rekod kesalahan lampau. Walau bagaimanapun, tindakan tatatertib wajar diteruskan di bawah Peraturan 23 Peraturan-Peraturan Pegawai Awam (Kelakuan dan Tatatertib) 1993.',
+      ULASAN_URUS_SETIA: 'Urus Setia mendapati pegawai tidak mempunyai rekod kesalahan lampau. Walau bagaimanapun, tindakan tatatertib wajar diteruskan.',
       PUNCA_KES: 'JABATAN',
       CATATAN: 'Pegawai memberikan penjelasan lewat selepas surat tunjuk sebab dikeluarkan.',
       LINK_PINDA_CATATAN: 'https://drive.google.com/file/d/1catatan_pindahan_ahmad/view',
       TARIKH_KEMUKA_PINDA_KERTAS: '2026-05-10T09:00:00Z'
     },
     workflow: {
-      STATUS_KATEGORI: 'B05c PP - PP Edaran Diluluskan PBK - Urusetia',
+      STATUS_KATEGORI: 'B01 PP - Penyediaan PP - Pegawai Kes',
       STATUS_KATEGORI_UTAMA: 'Penentuan Pengerusi',
       STATUS_KEMASKINI_KES_DI_HRMIS: 'SP Updated',
       PEGAWAI_KES: '02) KPP OA1 - EZLY (OA)',
@@ -255,7 +255,7 @@ export const INITIAL_CASES: CompleteCase[] = [
       NO_KP: '780915036688',
       TARIKH_LAHIR: '15-SEP-1978',
       PILIHAN_UMUR_PERSARAAN: 58,
-      TARIKH_BERSARA: '15-SEP-2036',
+      TARIKH_BERSARA: '15-APR-2026',
       JANTINA: 'P',
       KAUM: 'MELAYU',
       JAWATAN: 'Pegawai Tadbir dan Diplomatik',
@@ -297,5 +297,201 @@ export const INITIAL_CASES: CompleteCase[] = [
       TARIKH_PENENTUAN_PENGERUSI: '',
       PENENTUAN: ''
     }
+  },
+  {
+    metadata: {
+      BIL: 3,
+      NO_RUJ_FAIL_JPA: 'JPA.C.P.100-2/4/14(11)',
+      BIL_IKUT_SUSUNAN_PAPER: '2017/01/24',
+      URL_LINK_GD: 'https://drive.google.com/drive/folders/3eFgHiJkLmNoPqRsTuVwXyZabCd',
+      URL_LINK_LSPRM_LPBI_ADUAN: '',
+      URL_LINK_PP: 'https://drive.google.com/file/d/3eFgHi_pp/view',
+      URL_LINK_SP: '',
+      URL_LINK_PH: '',
+      URL_LINK_SK: ''
+    },
+    officer: {
+      NAMA: 'Tan Lee Cheng',
+      NO_KP: '671014075116',
+      TARIKH_LAHIR: '14-OCT-1967',
+      PILIHAN_UMUR_PERSARAAN: 60,
+      TARIKH_BERSARA: '31-AUG-2023',
+      JANTINA: 'P',
+      KAUM: 'CINA',
+      JAWATAN: 'Pegawai Perkhidmatan Pendidikan',
+      SKIM: 'DG - Pendidikan',
+      GRED: 'DG48',
+      STATUS_JAWATAN: 'HAKIKI',
+      TEMPAT_BERTUGAS: 'Sekolah Menengah Kebangsaan Perak',
+      NEGERI: 'PERAK',
+      KEMENTERIAN: 'KPM - Kementerian Pendidikan Malaysia'
+    },
+    details: {
+      KESALAHAN_ALL: 'Mengalihkan peruntukan PCG ke LPBT tanpa kebenaran Ketua Jabatan.',
+      JENIS_KESALAHAN: ['Kewangan/ Perolehan'],
+      RINGKASAN_KESALAHAN: 'Pegawai didapati mengalihkan peruntukan Bantuan Per Kapita Untuk Sekolah (PCG) yang telah diluluskan bagi menjalankan program di bawah PCG Mata Pelajaran ke Lain-Lain Perbelanjaan Berulang Tahun (LPBT) tanpa kebenaran Ketua Jabatan.',
+      ULASAN_URUS_SETIA: 'Walau pun pegawai telah mengalihkan peruntukan PCG ke LPBT bagi tujuan membayar kerja-kerja penyelenggaraan dan membaik pulih sekolah, namun adalah menjadi tanggungjawab pegawai untuk memohon kebenaran Ketua PTJ seperti yang dinyatakan dalam SPK Bil. 8 Tahun 2012.',
+      PUNCA_KES: 'AUDIT',
+      CATATAN: '',
+      LINK_PINDA_CATATAN: '',
+      TARIKH_KEMUKA_PINDA_KERTAS: ''
+    },
+    workflow: {
+      STATUS_KATEGORI: 'B01 PP - Penyediaan PP - Pegawai Kes',
+      STATUS_KATEGORI_UTAMA: 'Penentuan Pengerusi',
+      STATUS_KEMASKINI_KES_DI_HRMIS: 'Incomplete',
+      PEGAWAI_KES: 'ELMI (OA)',
+      SME: 'RATINA (OA)',
+      PEGAWAI_PENYEMAK: '01) TPB - ROSMASHILAH (OA)',
+      TAHUN_TERIMA: 2026,
+      TARIKH_TERIMA_PERAKUAN: '2017-01-24',
+      TAHUN_KPI: 2026,
+      TARIKH_SERAHAN_KEPADA_PEGAWAI_KES: '2017-01-26',
+      TARIKH_DOKUMEN_LENGKAP: '2017-01-28',
+      STATUS_DRAF_PP_DAN_SLAID_MKSN: 'Penyediaan Draf',
+      TARIKH_MESY_JK2T_MKSN: '',
+      TARIKH_LULUS_PP_OLEH_JK2T: '',
+      BIL_MESY_MKSN_MPP: '',
+      TARIKH_HANTAR_PP_KE_KSN: '',
+      TARIKH_PENENTUAN_PENGERUSI: '',
+      PENENTUAN: ''
+    }
+  },
+  {
+    metadata: {
+      BIL: 4,
+      NO_RUJ_FAIL_JPA: 'JPA.C.P.100-2/4/15(02)',
+      BIL_IKUT_SUSUNAN_PAPER: '2017/10/13',
+      URL_LINK_GD: 'https://drive.google.com/drive/folders/4fGhIjKlMnOpQrStUvWxYzAbCdE',
+      URL_LINK_LSPRM_LPBI_ADUAN: '',
+      URL_LINK_PP: 'https://drive.google.com/file/d/4fGh_pp/view',
+      URL_LINK_SP: '',
+      URL_LINK_PH: '',
+      URL_LINK_SK: ''
+    },
+    officer: {
+      NAMA: 'Kamal bin Ariffin',
+      NO_KP: '850106105433',
+      TARIKH_LAHIR: '06-JAN-1985',
+      PILIHAN_UMUR_PERSARAAN: 60,
+      TARIKH_BERSARA: '07-DEC-2041',
+      JANTINA: 'L',
+      KAUM: 'MELAYU',
+      JAWATAN: 'Pegawai Tadbir dan Diplomatik',
+      SKIM: 'M - Pentadbiran dan Sokongan',
+      GRED: 'M48 (HAKIKI)',
+      STATUS_JAWATAN: 'HAKIKI',
+      TEMPAT_BERTUGAS: 'Bahagian Pentadbiran, JPM Kuala Lumpur',
+      NEGERI: 'WILAYAH PERSEKUTUAN KUALA LUMPUR',
+      KEMENTERIAN: 'JPM - Jabatan Perdana Menteri'
+    },
+    details: {
+      KESALAHAN_ALL: 'Menjual lebihan pagar (welded mesh) tanpa kuasa atau arahan pihak atasan.',
+      JENIS_KESALAHAN: ['Kewangan/ Perolehan', 'Salah Guna Kuasa'],
+      RINGKASAN_KESALAHAN: "Menjual lebihan pagar (welded mesh) bagi Projek Pembinaan 'Park and Rides' Batu Tiga, Shah Alam, Selangor kepada Syarikat KP Daya Resources Sdn. Bhd. bagi tujuan pelupusan pada 02.05.2017 tanpa kuasa atau tanpa arahan daripada Pengurus Besar RAC.",
+      ULASAN_URUS_SETIA: '1. Berdasarkan representasi, pegawai telah menafikan bahawa beliau telah mengeluarkan arahan bagi penjualan lebihan pagar kepada Syarikat KP Daya Resources Sdn. Bhd. kerana ia bukan di bawah bidang kuasa pegawai sebagai Pengurus Kanan Hartanah. Tiada pembuktian yang menunjukkan kepada penglibatan mahupun arahan pegawai bahawa lebihan pagar tersebut dijual kepada syarikat tersebut.\n2. Pihak RAC juga tidak dapat memberikan pengesahan berlakunya penjualan lebihan pagar kepada Syarikat KP Daya Resources Sdn. Bhd. kerana syarikat tersebut tidak berdaftar dengan pihak RAC.',
+      PUNCA_KES: 'JABATAN',
+      CATATAN: "Kes Puan Amimah OC. 13.06.2023 - Terima rep. 17.7.2023 - mohon maklumat emolumen dengan INTAN Kiara, due 21.7.2023. INTAN reply pada 17.7.2023. 17.7.2023 - mohon pengesahan pemindahan lebihan pagar oleh KP Daya Resources ke stor RAC di Chan Sow Lin. Due 21.7.2023. 26.7.2023 - submit slide PH kepada TPB. 31.7.2023 - selesai."
+    },
+    workflow: {
+      STATUS_KATEGORI: 'B01 PP - Penyediaan PP - Pegawai Kes',
+      STATUS_KATEGORI_UTAMA: 'Klarifikasi & Perincian Kesalahan',
+      STATUS_KEMASKINI_KES_DI_HRMIS: 'Incomplete',
+      PEGAWAI_KES: '03) KPP OA2 - SHAHRIMAN (OA)',
+      TAHUN_TERIMA: 2026,
+      TARIKH_TERIMA_PERAKUAN: '2017-10-13',
+      TARIKH_SERAHAN_KEPADA_PEGAWAI_KES: '2017-10-13',
+      TAHUN_KPI: 2026
+    }
+  },
+  {
+    metadata: {
+      BIL: 5,
+      NO_RUJ_FAIL_JPA: 'JPA.C.P.100-2/4/16(05)',
+      BIL_IKUT_SUSUNAN_PAPER: '2026/02/10',
+      URL_LINK_GD: '',
+      URL_LINK_LSPRM_LPBI_ADUAN: '',
+      URL_LINK_PP: '',
+      URL_LINK_SP: '',
+      URL_LINK_PH: '',
+      URL_LINK_SK: ''
+    },
+    officer: {
+      NAMA: 'Sarah binti Joseph',
+      NO_KP: '900210145588',
+      TARIKH_LAHIR: '10-FEB-1990',
+      PILIHAN_UMUR_PERSARAAN: 60,
+      TARIKH_BERSARA: '10-FEB-2027',
+      JANTINA: 'P',
+      KAUM: 'LAIN-LAIN KAUM',
+      JAWATAN: 'Penolong Pegawai Tadbir Gred N29',
+      SKIM: 'N - Pentadbiran dan Sokongan',
+      GRED: '29',
+      STATUS_JAWATAN: 'HAKIKI',
+      TEMPAT_BERTUGAS: 'Kementerian Belia dan Sukan, Putrajaya',
+      NEGERI: 'W.P. PUTRAJAYA',
+      KEMENTERIAN: 'KBS - Kementerian Belia dan Sukan'
+    },
+    details: {
+      KESALAHAN_ALL: 'Membuat aduan lisan yang mengandungi dakwaan palsu serta gangguan emosi kepada rakan sekerja.',
+      JENIS_KESALAHAN: ['Gangguan Seksual', 'Mencemar Nama Perkhidmatan Awam'],
+      RINGKASAN_KESALAHAN: 'Gangguan lisan dan sikap tidak profesional kepada rakan sekerja.',
+      ULASAN_URUS_SETIA: 'Memerlukan keterangan lanjut bagi menentukan tindakan sewajarnya.',
+      PUNCA_KES: 'ADUAN'
+    },
+    workflow: {
+      STATUS_KATEGORI: 'B02 PP - Semakan PP - Penyemak Kes',
+      STATUS_KATEGORI_UTAMA: 'Penentuan Pengerusi',
+      STATUS_KEMASKINI_KES_DI_HRMIS: 'Incomplete',
+      PEGAWAI_KES: '02) KPP OA1 - EZLY (OA)',
+      TAHUN_TERIMA: 2026,
+      TARIKH_TERIMA_PERAKUAN: '2026-02-10',
+      TAHUN_KPI: 2026
+    }
+  },
+  {
+    metadata: {
+      BIL: 6,
+      NO_RUJ_FAIL_JPA: 'JPA.C.P.100-2/4/17(09)',
+      BIL_IKUT_SUSUNAN_PAPER: '2026/04/07',
+      URL_LINK_GD: '',
+      URL_LINK_LSPRM_LPBI_ADUAN: '',
+      URL_LINK_PP: '',
+      URL_LINK_SP: '',
+      URL_LINK_PH: '',
+      URL_LINK_SK: ''
+    },
+    officer: {
+      NAMA: 'Ganesan a/l Ramasamy',
+      NO_KP: '750407106321',
+      TARIKH_LAHIR: '07-APR-1975',
+      PILIHAN_UMUR_PERSARAAN: 60,
+      TARIKH_BERSARA: '07-APR-2027',
+      JANTINA: 'L',
+      KAUM: 'INDIA',
+      JAWATAN: 'Pemandu Kenderaan Gred H11',
+      SKIM: 'H - Kemahiran',
+      GRED: '11',
+      STATUS_JAWATAN: 'HAKIKI',
+      TEMPAT_BERTUGAS: 'Bahagian Logistik, JPM Putrajaya',
+      NEGERI: 'W.P. PUTRAJAYA',
+      KEMENTERIAN: 'JPM - Jabatan Perdana Menteri'
+    },
+    details: {
+      KESALAHAN_ALL: 'Tidak hadir bertugas tanpa cuti atau kebenaran selama 10 hari berturut-turut pada bulan Mac 2026.',
+      JENIS_KESALAHAN: ['Tidak Hadir Bertugas'],
+      RINGKASAN_KESALAHAN: 'Tidak hadir bertugas tanpa sebab munasabah selama 10 hari.',
+      ULASAN_URUS_SETIA: 'Laporan polis dibuat oleh jabatan kerana pegawai gagal dikesan. Tindakan tatatertib dimulakan.',
+      PUNCA_KES: 'JABATAN'
+    },
+    workflow: {
+      STATUS_KATEGORI: 'B01 PP - Penyediaan PP - Pegawai Kes',
+      STATUS_KATEGORI_UTAMA: 'Klarifikasi & Perincian Kesalahan',
+      STATUS_KEMASKINI_KES_DI_HRMIS: 'Incomplete',
+      PEGAWAI_KES: '04) KPP OA3 - FAEZAH (OA)',
+      TAHUN_TERIMA: 2026,
+      TARIKH_TERIMA_PERAKUAN: '2026-04-07',
+      TAHUN_KPI: 2026
+    }
   }
-];
+]

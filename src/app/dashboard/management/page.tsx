@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { CompleteCase } from '@/lib/types';
 import { INITIAL_CASES } from '@/lib/mock-data';
 import { 
-  ClipboardCheck, UserCheck, AlertTriangle, FileText, CheckCircle2,
-  Lock, Calendar, FolderOpen, ScrollText, Database, ShieldAlert
+  ClipboardCheck, FileText, CheckCircle2,
+  Lock, ScrollText, Database, ShieldAlert
 } from 'lucide-react';
 
 export default function ManagementDashboard() {
@@ -20,12 +20,14 @@ export default function ManagementDashboard() {
 
   useEffect(() => {
     const stored = localStorage.getItem('spt_cases');
-    if (stored) {
-      setCases(JSON.parse(stored));
-    } else {
-      localStorage.setItem('spt_cases', JSON.stringify(INITIAL_CASES));
-      setCases(INITIAL_CASES);
-    }
+    setTimeout(() => {
+      if (stored) {
+        setCases(JSON.parse(stored));
+      } else {
+        localStorage.setItem('spt_cases', JSON.stringify(INITIAL_CASES));
+        setCases(INITIAL_CASES);
+      }
+    }, 0);
   }, []);
 
   // Filter cases that are in "Penentuan Pengerusi" phase (meaning they need Director sign-off)

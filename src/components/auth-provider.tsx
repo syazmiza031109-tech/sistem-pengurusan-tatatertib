@@ -32,10 +32,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Load user from localStorage on mount
   useEffect(() => {
     const storedUser = localStorage.getItem('spt_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    setTimeout(() => {
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+      }
+      setLoading(false);
+    }, 0);
   }, []);
 
   const login = (role: 'Pegawai Kes' | 'Pengarah' | 'Lembaga Tatatertib' | 'Public' | 'Super Admin') => {
