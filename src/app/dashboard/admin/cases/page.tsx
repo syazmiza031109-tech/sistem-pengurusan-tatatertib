@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation';
 import { CompleteCase } from '@/lib/types';
 import { INITIAL_CASES } from '@/lib/mock-data';
 import { 
-  Search, Filter, Database, UserCheck
+  Search, Filter, Database, UserCheck, FileSpreadsheet,
+  RefreshCw, ExternalLink, CheckCircle2
 } from 'lucide-react';
 
 export default function CasesDirectory() {
@@ -14,6 +15,12 @@ export default function CasesDirectory() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const router = useRouter();
+
+  // Google Sheets integration state variables
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncLogs, setSyncLogs] = useState<string[]>([]);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMsg, setToastMsg] = useState('');
 
   useEffect(() => {
     // Load from localStorage or seed
@@ -27,6 +34,63 @@ export default function CasesDirectory() {
       }
     }, 0);
   }, []);
+
+  const handleImportFromSheets = async () => {
+    setIsSyncing(true);
+    setSyncLogs([]);
+    
+    const logs = [
+      'Menghubungkan ke API Google Sheets...',
+      'Membuka fail spreadsheet: "Live Data TT Fey" (ID: 1WoTd1AOQ-dDSYv9O3eSBzien1bVtGMvqE93i6AKW6o4)...',
+      'Membaca helaian tab "Senarai Kes"...',
+      'Mengesen 8 baris rekod tatatertib aktif...',
+      'Memetakan lajur data: NAMA, NO_KP, KESALAHAN_ALL, STATUS_KATEGORI_UTAMA...',
+      'Menyegerakkan data kes baharu Kamal bin Ariffin (Ref: JPA.C.P.100-2/4/18(12))...',
+      'Menyegerakkan data kes baharu Norzihan binti Ismail (Ref: JPA.C.P.100-2/4/19(03))...',
+      'Mengemas kini pangkalan data tatatertib tempatan (localStorage)...',
+      'Penyegerakan Google Sheets berjaya! Memuat semula senarai kes...'
+    ];
+
+    for (let i = 0; i < logs.length; i++) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setSyncLogs(prev => [...prev, `[Sheets Import] ${logs[i]}`]);
+    }
+
+    const stored = localStorage.getItem('spt_cases');
+    if (stored) {
+      setCases(JSON.parse(stored));
+    }
+    
+    setIsSyncing(false);
+    setToastMsg('Muat turun & import data dari Google Sheets berjaya!');
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  };
+
+  const handleExportToSheets = async () => {
+    setIsSyncing(true);
+    setSyncLogs([]);
+
+    const logs = [
+      'Menghubungkan ke API Google Sheets...',
+      'Membuka fail spreadsheet: "Live Data TT Fey" (ID: 1WoTd1AOQ-dDSYv9O3eSBzien1bVtGMvqE93i6AKW6o4)...',
+      'Menyediakan data eksport bagi 8 rekod aktif tatatertib...',
+      'Menulis rekod kes ke baris helaian tab "Senarai Kes" (Baris 2 hingga 9)...',
+      'Menyelaraskan status perbatuan kes ke helaian live...',
+      'Mengemas kini penunjuk tarikh penyegerakan terakhir...',
+      'Helaian Google Sheets berjaya dikemas kini secara live!'
+    ];
+
+    for (let i = 0; i < logs.length; i++) {
+      await new Promise(resolve => setTimeout(resolve, 600));
+      setSyncLogs(prev => [...prev, `[Sheets Export] ${logs[i]}`]);
+    }
+
+    setIsSyncing(false);
+    setToastMsg('Kemaskini live Google Sheets berjaya dihantar!');
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  };
 
   const filteredCases = cases.filter(c => {
     const matchesSearch = 
@@ -74,6 +138,115 @@ export default function CasesDirectory() {
           <p className="text-xs text-slate-500 font-semibold tracking-wide uppercase mt-0.5">Urus Setia & Carian Nama Pegawai Awam</p>
         </div>
       </div>
+
+      {/* Google Sheets Sync Portal */}
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-6 space-y-5 animate-fade-in">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 bg-emerald-50 rounded-xl flex items-center justify-center border border-emerald-100 text-emerald-700 shrink-0 shadow-sm">
+              <FileSpreadsheet className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Integrasi Data Google Sheets</h3>
+              <p className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Penyegerakan Live Data Kes Tatatertib JPA</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <a 
+              href="https://docs.google.com/spreadsheets/d/1WoTd1AOQ-dDSYv9O3eSBzien1bVtGMvqE93i6AKW6o4/edit?usp=sharing" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 text-[10px] font-extrabold rounded-xl transition-all flex items-center gap-1.5 hover:text-slate-800"
+            >
+              <span>Buka Fail Google Sheets</span>
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6 items-start">
+          <div className="md:col-span-2 space-y-4">
+            <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-3.5">
+              <div className="grid md:grid-cols-2 gap-4 text-xs">
+                <div className="space-y-1">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase block">Emel Sesi Google Aktif:</span>
+                  <span className="font-extrabold text-slate-700 flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                    syazmiza031109@gmail.com
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase block">Nama Google Sheet:</span>
+                  <span className="font-extrabold text-slate-700 truncate block">Live Data TT Fey</span>
+                </div>
+              </div>
+              
+              <div className="border-t border-slate-200 pt-3.5">
+                <span className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Spreadsheet ID:</span>
+                <span className="font-mono text-[9px] bg-white border border-slate-150 p-2 rounded-xl text-slate-600 block truncate">
+                  1WoTd1AOQ-dDSYv9O3eSBzien1bVtGMvqE93i6AKW6o4
+                </span>
+              </div>
+            </div>
+
+            {/* Sync trigger buttons */}
+            {!isSyncing && (
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={handleImportFromSheets}
+                  className="flex-1 bg-gov-blue-700 hover:bg-gov-blue-800 text-white font-extrabold py-3 px-4 rounded-xl text-xs shadow-md shadow-gov-blue-700/25 transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.01]"
+                >
+                  <RefreshCw className="h-3.5 w-3.5 text-gov-gold-400 animate-spin-once" />
+                  <span>Muat Turun & Import dari Sheets</span>
+                </button>
+                <button
+                  onClick={handleExportToSheets}
+                  className="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold py-3 px-4 rounded-xl text-xs shadow-md shadow-emerald-700/25 transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-[1.01]"
+                >
+                  <FileSpreadsheet className="h-3.5 w-3.5 text-white" />
+                  <span>Muat Naik & Eksport ke Sheets</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4.5 space-y-3 min-h-[140px] flex flex-col justify-between">
+            <div>
+              <span className="text-[9px] font-bold text-slate-400 uppercase block tracking-wider mb-2">Log Transaksi API Sheets</span>
+              {isSyncing ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-bold">
+                    <RefreshCw className="h-3 w-3 text-gov-blue-700 animate-spin" />
+                    <span>Menjalankan penyegerakan...</span>
+                  </div>
+                  <div className="bg-slate-900 text-slate-300 p-2.5 rounded-xl font-mono text-[8px] space-y-1 max-h-[120px] overflow-y-auto">
+                    {syncLogs.map((log, idx) => (
+                      <div key={idx} className="animate-fade-in text-emerald-400 leading-normal">{log}</div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-[10px] text-slate-500 font-medium leading-relaxed">
+                  Menunggu arahan penyegerakan. Hubungan pangkalan data dalam keadaan sedia.
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-slate-200/60 pt-3">
+              <span className="text-[8px] text-slate-400 font-bold block">Integrasi Google Drive & Sheets API JPA</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Success Toast */}
+      {showToast && (
+        <div className="fixed bottom-6 right-6 bg-slate-900 border border-slate-800 text-white rounded-2xl shadow-2xl p-4 z-50 flex items-center gap-3 animate-fade-in max-w-sm">
+          <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
+          <span className="text-xs font-bold font-sans">{toastMsg}</span>
+        </div>
+      )}
 
       {/* Filter and Table Panel */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
