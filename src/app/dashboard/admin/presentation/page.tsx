@@ -13,8 +13,12 @@ const getEmbedUrl = (url: string | undefined) => {
   if (url.includes('drive.google.com/file/d/')) {
     return url.replace(/\/view\??.*/, '/preview');
   }
+  // Keep/use the /edit path for Google Slides to preserve speaker notes and reviewer comments layout
   if (url.includes('docs.google.com/presentation/d/')) {
-    return url.replace(/\/edit\??.*/, '/embed');
+    if (url.includes('/embed')) {
+      return url.replace('/embed', '/edit');
+    }
+    return url;
   }
   return url;
 };
@@ -272,7 +276,7 @@ export default function PresentationPage() {
                 <div className="space-y-1">
                   <span className="text-[10px] font-extrabold text-gov-blue-900 block">Autentikasi Kredensial SSO Google Workspace</span>
                   <p className="text-[9px] text-slate-500 font-medium leading-relaxed">
-                    Sesi pembentangan di atas disegerakkan dengan e-mel rasmi penjawat awam secara Single-Sign-On (SSO). Kebenaran membaca dan mengedit draf slaid adalah terikat kepada tetapan kebenaran Google Workspace & Drive rasmi anda.
+                    Sesi pembentangan di atas disegerakkan melalui Single-Sign-On (SSO) Google Workspace. Slaid dimuatkan dalam mod ulasan & editor (/edit) untuk membolehkan semakan Nota Pembentang (Speaker Notes) di bawah slaid serta kolaborasi ulasan (Reviewer Comments) secara langsung.
                   </p>
                 </div>
               </div>
