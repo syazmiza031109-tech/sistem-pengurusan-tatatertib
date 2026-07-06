@@ -175,7 +175,7 @@ export const INITIAL_CASES: CompleteCase[] = [
       BIL_IKUT_SUSUNAN_PAPER: '2026/04/01',
       URL_LINK_GD: 'https://drive.google.com/drive/folders/1aBcDeFgHiJkLmNoPqRsTuVwXyZ',
       URL_LINK_LSPRM_LPBI_ADUAN: 'https://aduan.sprm.gov.my/case/sprm-2026-99182',
-      URL_LINK_PP: 'https://drive.google.com/file/d/1XyZ_kertas_makluman/view',
+      URL_LINK_PP: 'https://docs.google.com/presentation/d/1wUMfOiibqpz3W-gbC1c0txTxUNZOAfHdN_ZWaopcA-8/edit?usp=sharing',
       URL_LINK_SP: 'https://drive.google.com/file/d/1XyZ_surat_pertuduhan/view',
       URL_LINK_PH: 'https://drive.google.com/file/d/1XyZ_surat_hukuman/view',
       URL_LINK_SK: 'https://drive.google.com/file/d/1XyZ_surat_keputusan/view'

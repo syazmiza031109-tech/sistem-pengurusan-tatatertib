@@ -47,11 +47,16 @@ export default function DashboardLayout({
               existing.officer.TARIKH_BERSARA !== initCase.officer.TARIKH_BERSARA ||
               existing.details.ULASAN_URUS_SETIA !== initCase.details.ULASAN_URUS_SETIA ||
               existing.officer.JAWATAN !== initCase.officer.JAWATAN ||
-              existing.officer.NEGERI !== initCase.officer.NEGERI
+              existing.officer.NEGERI !== initCase.officer.NEGERI ||
+              existing.metadata.URL_LINK_PP !== initCase.metadata.URL_LINK_PP
             ) {
               updated = true;
               return {
                 ...existing,
+                metadata: {
+                  ...existing.metadata,
+                  URL_LINK_PP: initCase.metadata.URL_LINK_PP
+                },
                 officer: {
                   ...existing.officer,
                   TARIKH_BERSARA: initCase.officer.TARIKH_BERSARA,
