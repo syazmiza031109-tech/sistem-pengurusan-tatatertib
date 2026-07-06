@@ -23,6 +23,15 @@ export default function DashboardLayout({
   const pathname = usePathname() || '';
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  // Google Sheets Backend Integration states
+  const [showSetupModal, setShowSetupModal] = useState(false);
+  const [gsheetUrl, setGsheetUrl] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('spt_gsheet_url') || '';
+    }
+    return '';
+  });
+
   // Redirect to landing page if not logged in
   useEffect(() => {
     if (!loading && !user) {
@@ -261,6 +270,22 @@ export default function DashboardLayout({
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Google Sheets Backend Sync Indicator */}
+            <button
+              onClick={() => setShowSetupModal(true)}
+              title={gsheetUrl ? "Google Sheets Backend: AKTIF & LIVE. Klik untuk tetapan." : "Google Sheets Backend: SIMULASI SAHAJA. Klik untuk tetapan."}
+              className={`h-10 px-3.5 rounded-xl flex items-center gap-2 text-[10px] font-extrabold transition-all cursor-pointer shadow-sm hover:scale-[1.02] border ${
+                gsheetUrl 
+                  ? 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-800' 
+                  : 'bg-amber-50 hover:bg-amber-100 border-amber-200 text-amber-800'
+              }`}
+            >
+              <span className={`h-2 w-2 rounded-full shrink-0 ${gsheetUrl ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500 animate-pulse'}`}></span>
+              <span className="uppercase tracking-wider">
+                {gsheetUrl ? 'Sheets Backend Live' : 'Sheets Backend Offline'}
+              </span>
+            </button>
+
             {/* Notification mock */}
             <button className="h-10 w-10 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 relative transition-colors cursor-pointer">
               <Bell className="h-4.5 w-4.5" />
@@ -282,7 +307,129 @@ export default function DashboardLayout({
           {children}
         </main>
       </div>
+
+      {/* Google Sheets Connection Modal */}
+      {showSetupModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in font-sans">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 w-full max-w-2xl space-y-5 animate-scale-up max-h-[85vh] overflow-y-auto custom-scrollbar">
+            <div className="flex items-center gap-3 text-emerald-700 border-b border-slate-100 pb-3 justify-between">
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <div>
+                  <h4 className="text-sm font-extrabold text-slate-800">Sambungan Google Sheets Live (Backend Mode)</h4>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Penetapan Sambungan Web App Google Apps Script</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowSetupModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs text-slate-700">
+              <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-[11px] leading-relaxed text-amber-800 font-medium">
+                💡 <strong>Info:</strong> Secara lalai, sistem ini menggunakan <strong>Mod Simulasi Offline</strong> untuk menunjukkan aliran kemasukan data. Anda boleh menyambungkannya terus ke Google Sheets anda secara LIVE menggunakan Google Apps Script dalam 1 minit.
+              </div>
+
+              <div className="space-y-2.5">
+                <span className="font-bold text-slate-800 block text-xs">Langkah Penyediaan Live Connection:</span>
+                <ol className="list-decimal list-inside space-y-2 text-slate-600 pl-1 leading-relaxed">
+                  <li>Buka fail Google Sheets anda: <a href="https://docs.google.com/spreadsheets/d/1WoTd1AOQ-dDSYv9O3eSBzien1bVtGMvqE93i6AKW6o4/edit" target="_blank" rel="noopener noreferrer" className="text-gov-blue-700 font-bold underline">Live Data TT Fey</a>.</li>
+                  <li>Pergi ke menu atas: <strong>Extensions &gt; Apps Script</strong>.</li>
+                  <li>Padam semua kod sedia ada, dan tampal kod Apps Script di bawah:</li>
+                </ol>
+
+                <div className="bg-slate-900 rounded-2xl p-4 font-mono text-[9px] text-emerald-400 relative border border-slate-800 shadow-inner">
+                  <span className="absolute top-2 right-3 text-[8px] text-slate-500 uppercase font-sans font-bold">Google Apps Script</span>
+                  <pre className="overflow-x-auto leading-relaxed">{`function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Senarai Kes") || SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+    var rows = sheet.getDataRange().getValues();
+    var kpToFind = data.row[13]; // Column N (Index 13) is NO. K.P.
+    var foundIndex = -1;
+    
+    for (var i = 1; i < rows.length; i++) {
+      if (rows[i][13] == kpToFind) {
+        foundIndex = i + 1;
+        break;
+      }
+    }
+    
+    if (foundIndex > -1) {
+      sheet.getRange(foundIndex, 1, 1, data.row.length).setValues([data.row]);
+    } else {
+      sheet.appendRow(data.row);
+    }
+    return ContentService.createTextOutput(JSON.stringify({ success: true, updated: foundIndex > -1 })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ success: false, error: err.toString() })).setMimeType(ContentService.MimeType.JSON);
+  }
+}`}</pre>
+                </div>
+
+                <ol start={4} className="list-decimal list-inside space-y-2 text-slate-600 pl-1 leading-relaxed">
+                  <li>Klik butang <strong>Deploy &gt; New Deployment</strong> di atas.</li>
+                  <li>Pilih jenis (Gear icon): <strong>Web App</strong>.</li>
+                  <li>Tetapkan <strong>Execute as:</strong> <span className="font-bold">Me (syazmiza031109@gmail.com)</span>.</li>
+                  <li>Tetapkan <strong>Who has access:</strong> <span className="font-bold text-red-600">Anyone</span> (supaya aplikasi web boleh menghantar permohonan API).</li>
+                  <li>Klik <strong>Deploy</strong>, luluskan keizinan akaun Google anda jika diminta, kemudian salin <strong>Web App URL</strong> yang dihasilkan.</li>
+                </ol>
+              </div>
+
+              <div className="space-y-1.5 border-t border-slate-100 pt-4">
+                <label className="text-[10px] font-bold text-slate-500 uppercase block">Tampal Web App URL Di Sini:</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={gsheetUrl}
+                    onChange={(e) => setGsheetUrl(e.target.value)}
+                    placeholder="Contoh: https://script.google.com/macros/s/AKfycb.../exec"
+                    className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 bg-slate-50 font-mono text-[10px]"
+                  />
+                  {gsheetUrl && (
+                    <button
+                      onClick={() => {
+                        setGsheetUrl('');
+                        localStorage.removeItem('spt_gsheet_url');
+                      }}
+                      className="px-3 bg-red-50 text-red-700 border border-red-100 hover:bg-red-100 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+                <p className="text-[9px] text-slate-400 font-medium">Sistem akan secara automatik membuat panggilan POST ke URL ini setiap kali fail kes didaftarkan atau keputusan lembaga direkodkan.</p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-3 border-t border-slate-150">
+              <button
+                onClick={() => setShowSetupModal(false)}
+                className="flex-1 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded-xl transition-all cursor-pointer text-xs"
+              >
+                Batal
+              </button>
+              <button
+                onClick={() => {
+                  if (gsheetUrl.trim()) {
+                    localStorage.setItem('spt_gsheet_url', gsheetUrl.trim());
+                  } else {
+                    localStorage.removeItem('spt_gsheet_url');
+                  }
+                  setShowSetupModal(false);
+                  window.location.reload();
+                }}
+                className="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 rounded-xl transition-all shadow-md shadow-emerald-700/20 hover:scale-[1.02] cursor-pointer text-xs"
+              >
+                Simpan & Aktifkan Live Sync
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

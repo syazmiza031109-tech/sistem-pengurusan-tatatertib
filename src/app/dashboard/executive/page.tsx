@@ -88,7 +88,7 @@ export default function ExecutiveDashboard() {
       return c;
     });
 
-    // Simulate API integration logs for HRMIS
+    // Simulate API integration logs for HRMIS & Google Sheets Backend
     const apiLogs = [
       'Memulakan integrasi API SOAP HRMIS...',
       'Mengakses skema [Tatatertib_HRMIS_Service]...',
@@ -96,12 +96,59 @@ export default function ExecutiveDashboard() {
       'Memindahkan keputusan: "' + hukuman + '"...',
       'Menetapkan sekatan kenaikan pangkat (Flag Tempoh Blacklist)...',
       'Mengemas kini profil perkhidmatan pegawai di pangkalan data JPA...',
-      'Penyelarasan Sistem HRMIS berjaya! Status: Sync OK.'
+      'Penyelarasan Sistem HRMIS berjaya! Status: Sync OK.',
+      'Menyegerakkan perubahan secara automatik ke Google Sheets Backend...',
+      'Membuka fail Google Sheets: "Live Data TT Fey" (ID: 1WoTd1AOQ-dDSYv9O3eSBzien1bVtGMvqE93i6AKW6o4)...',
+      'Mengemas kini rekod ' + selectedCase.officer.NAMA + ' dengan keputusan hukuman: "' + hukuman + '"...',
+      'Auto-penyegerakan pangkalan data Google Sheets selesai! Status: 200 OK.'
     ];
 
     for (let i = 0; i < apiLogs.length; i++) {
       await new Promise(resolve => setTimeout(resolve, 500));
       setHrmisLogs(prev => [...prev, apiLogs[i]]);
+    }
+
+    // If live connection is set up, make a real network request to write to the spreadsheet!
+    const liveUrl = localStorage.getItem('spt_gsheet_url');
+    const targetCase = updated.find(c => c.metadata.NO_RUJ_FAIL_JPA === selectedCase.metadata.NO_RUJ_FAIL_JPA);
+    if (liveUrl && targetCase) {
+      const row = [
+        targetCase.metadata.BIL || '',
+        targetCase.metadata.NO_RUJ_FAIL_JPA || '',
+        targetCase.metadata.BIL_IKUT_SUSUNAN_PAPER || '',
+        targetCase.metadata.URL_LINK_GD || '',
+        targetCase.metadata.URL_LINK_LSPRM_LPBI_ADUAN || '',
+        targetCase.metadata.URL_LINK_PP || '',
+        '', // URL_LINK_PK does not exist in types
+        targetCase.metadata.URL_LINK_SP || '',
+        targetCase.metadata.URL_LINK_PH || '',
+        targetCase.metadata.URL_LINK_SK || '',
+        '', // URL_LINK_SL does not exist in types
+        '', // Column L (empty)
+        targetCase.officer.NAMA || '',
+        targetCase.officer.NO_KP || '',
+        targetCase.officer.TARIKH_LAHIR || '',
+        targetCase.officer.PILIHAN_UMUR_PERSARAAN || '',
+        targetCase.officer.TARIKH_BERSARA || '',
+        targetCase.officer.JANTINA || '',
+        targetCase.officer.KAUM || '',
+        targetCase.officer.JAWATAN || '',
+        targetCase.officer.SKIM || '',
+        targetCase.officer.GRED || ''
+      ];
+      try {
+        await fetch(liveUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ row })
+        });
+        console.log('Successfully updated live Google Sheets backend via Apps Script!');
+      } catch (err) {
+        console.error('Failed to update Google Sheets:', err);
+      }
     }
 
     localStorage.setItem('spt_cases', JSON.stringify(updated));

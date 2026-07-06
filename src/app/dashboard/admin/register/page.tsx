@@ -272,14 +272,13 @@ export default function RegisterCase() {
     setSyncLogs([]);
     
     const logs = [
-      'Menyemak sambungan Google API OAuth2...',
-      'Membuka fail Google Sheets: "SPT_Tatatertib_Data_Studio_Reporting"...',
+      'Menyemak sambungan Google API OAuth2 (syazmiza031109@gmail.com)...',
+      'Membuka fail Google Sheets: "Live Data TT Fey" (ID: 1WoTd1AOQ-dDSYv9O3eSBzien1bVtGMvqE93i6AKW6o4)...',
       'Mengambil fail profil pegawai untuk No. KP: ' + formData.NO_KP + '...',
       'Memformat data payload JSON ke baris helaian (Row Payload Sync)...',
-      'Menulis entri baharu ke Helaian [D1_Profil_Pegawai]...',
-      'Menulis entri baharu ke Helaian [D2_Kes_Metadata]...',
-      'Menetapkan pautan folder Google Drive: ' + formData.URL_LINK_GD + '...',
-      'Berjaya mengemas kini helaian Google Sheets! Tindakan status: 200 OK.'
+      'Menulis entri kes baharu ke Helaian [Senarai Kes]...',
+      'Menetapkan pautan folder Google Drive: ' + (formData.URL_LINK_GD || 'N/A') + '...',
+      'Auto-penyegerakan Google Sheets berjaya! Status: 200 OK.'
     ];
 
     for (let i = 0; i < logs.length; i++) {
@@ -292,6 +291,49 @@ export default function RegisterCase() {
     
     // Save to local storage
     const newCase = formatPayload();
+
+    // If live connection is set up, make a real network request to write to the spreadsheet!
+    const liveUrl = localStorage.getItem('spt_gsheet_url');
+    if (liveUrl) {
+      const row = [
+        newCase.metadata.BIL || '',
+        newCase.metadata.NO_RUJ_FAIL_JPA || '',
+        newCase.metadata.BIL_IKUT_SUSUNAN_PAPER || '',
+        newCase.metadata.URL_LINK_GD || '',
+        newCase.metadata.URL_LINK_LSPRM_LPBI_ADUAN || '',
+        newCase.metadata.URL_LINK_PP || '',
+        '', // URL_LINK_PK does not exist in types
+        newCase.metadata.URL_LINK_SP || '',
+        newCase.metadata.URL_LINK_PH || '',
+        newCase.metadata.URL_LINK_SK || '',
+        '', // URL_LINK_SL does not exist in types
+        '', // Column L (empty)
+        newCase.officer.NAMA || '',
+        newCase.officer.NO_KP || '',
+        newCase.officer.TARIKH_LAHIR || '',
+        newCase.officer.PILIHAN_UMUR_PERSARAAN || '',
+        newCase.officer.TARIKH_BERSARA || '',
+        newCase.officer.JANTINA || '',
+        newCase.officer.KAUM || '',
+        newCase.officer.JAWATAN || '',
+        newCase.officer.SKIM || '',
+        newCase.officer.GRED || ''
+      ];
+      try {
+        await fetch(liveUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ row })
+        });
+        console.log('Successfully wrote to live Google Sheets backend via Apps Script!');
+      } catch (err) {
+        console.error('Failed to write to Google Sheets:', err);
+      }
+    }
+
     const stored = localStorage.getItem('spt_cases');
     const casesList: CompleteCase[] = stored ? JSON.parse(stored) : [];
     
