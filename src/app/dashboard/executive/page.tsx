@@ -21,6 +21,7 @@ export default function ExecutiveDashboard() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [hrmisLogs, setHrmisLogs] = useState<string[]>([]);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('spt_cases');
@@ -38,6 +39,11 @@ export default function ExecutiveDashboard() {
   const trialCases = cases.filter(c => 
     c.workflow.STATUS_KATEGORI_UTAMA === 'Surat Pertuduhan (SP)' &&
     !c.workflow.KEPUTUSAN_PERTUDUHAN
+  );
+
+  // Filter cases that are completed in trial (recorded board verdict)
+  const completedCases = cases.filter(c => 
+    c.workflow.STATUS_KATEGORI_UTAMA === 'Penyerahan Hukuman & Keputusan Lembaga (PH/LTT)'
   );
 
   // KPIs / Analytics Calculations
@@ -106,7 +112,37 @@ export default function ExecutiveDashboard() {
     setTimeout(() => {
       setSelectedCase(null);
       setSaveSuccess(false);
-    }, 1500);
+    }, 2500);
+  };
+
+  const handleRedoCase = (c: CompleteCase) => {
+    const updated = cases.map(item => {
+      if (item.metadata.NO_RUJ_FAIL_JPA === c.metadata.NO_RUJ_FAIL_JPA) {
+        return {
+          ...item,
+          workflow: {
+            ...item.workflow,
+            STATUS_KATEGORI: 'D01 SP - Penyediaan Surat Pertuduhan - Pegawai Kes',
+            STATUS_KATEGORI_UTAMA: 'Surat Pertuduhan (SP)',
+            STATUS_KEMASKINI_KES_DI_HRMIS: 'SP Updated' as const,
+            KEPUTUSAN_PERTUDUHAN: undefined,
+            TARIKH_BORANG_KEPUTUSAN_LTT: undefined,
+            TARIKH_MLTT: undefined,
+            BIL_MLTT: undefined,
+            JENIS_MLTT: undefined,
+            TAHUN_MESY_LTT: undefined,
+            RINGKASAN_KEPUTUSAN_HUKUMAN: undefined
+          }
+        };
+      }
+      return item;
+    });
+    localStorage.setItem('spt_cases', JSON.stringify(updated));
+    setCases(updated);
+    setSelectedCase(updated.find(item => item.metadata.NO_RUJ_FAIL_JPA === c.metadata.NO_RUJ_FAIL_JPA) || null);
+    setHukuman('Amaran');
+    setRingkasanHukuman('');
+    setSaveSuccess(false);
   };
 
   return (
@@ -204,6 +240,49 @@ export default function ExecutiveDashboard() {
               <div className="py-12 text-center text-slate-400 font-semibold space-y-2">
                 <Key className="h-8 w-8 mx-auto text-slate-300" />
                 <p className="text-xs">Tiada kes dalam fasa perbicaraan sedia ada.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Completed cases list */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Keputusan Baru Direkodkan</h3>
+              <span className="bg-gov-blue-50 text-gov-blue-700 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                {completedCases.length} Kes
+              </span>
+            </div>
+
+            {completedCases.length > 0 ? (
+              <div className="space-y-3 overflow-y-auto max-h-[300px] pr-1.5 custom-scrollbar animate-fade-in">
+                {completedCases.map((c) => (
+                  <div
+                    key={c.metadata.NO_RUJ_FAIL_JPA}
+                    className="p-4 rounded-xl border border-slate-100 bg-slate-50/30 flex justify-between items-center transition-all duration-200"
+                  >
+                    <div className="space-y-1 pr-4 min-w-0 flex-1">
+                      <span className="text-[9px] font-mono text-gov-blue-700 font-bold block truncate">
+                        {c.metadata.NO_RUJ_FAIL_JPA}
+                      </span>
+                      <span className="text-xs font-bold text-slate-700 block truncate">
+                        {c.officer.NAMA}
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-semibold block">
+                        Hukuman: <span className="text-gov-gold-700 font-black">{c.workflow.KEPUTUSAN_PERTUDUHAN}</span>
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleRedoCase(c)}
+                      className="bg-gov-blue-50 hover:bg-gov-blue-100 text-gov-blue-700 border border-gov-blue-100 px-3 py-1.5 rounded-xl text-[10px] font-extrabold transition-all cursor-pointer hover:scale-105"
+                    >
+                      Pinda / Redo
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-6 text-center text-slate-400 font-semibold text-[11px]">
+                Tiada rekod keputusan baharu dihantar.
               </div>
             )}
           </div>
@@ -329,7 +408,7 @@ export default function ExecutiveDashboard() {
                         Batal
                       </button>
                       <button
-                        onClick={handleSaveVerdict}
+                        onClick={() => setShowConfirmModal(true)}
                         className="flex-1 bg-gov-blue-700 hover:bg-gov-blue-800 text-white font-bold py-3.5 rounded-xl shadow-md shadow-gov-blue-700/20 hover:scale-[1.01] transition-all flex items-center justify-center gap-2 cursor-pointer"
                       >
                         <FileSignature className="h-4 w-4 text-gov-gold-400" />
@@ -348,6 +427,73 @@ export default function ExecutiveDashboard() {
           )}
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && selectedCase && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in font-sans">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 w-full max-w-md space-y-5 animate-scale-up">
+            <div className="flex items-center gap-3 text-gov-blue-700 border-b border-slate-100 pb-3">
+              <FileSignature className="h-6 w-6 text-gov-gold-500 animate-pulse" />
+              <div>
+                <h4 className="text-sm font-extrabold text-slate-800">Sahkan Keputusan Tatatertib</h4>
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Pengesahan Sidang Lembaga</p>
+              </div>
+            </div>
+
+            <div className="space-y-3.5 text-xs text-slate-700">
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase">Pegawai:</span>
+                  <span className="font-extrabold text-slate-800">{selectedCase.officer.NAMA}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase">No. KP:</span>
+                  <span className="font-mono font-bold text-slate-600">{selectedCase.officer.NO_KP}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase">No. Fail:</span>
+                  <span className="font-mono font-bold text-gov-blue-700">{selectedCase.metadata.NO_RUJ_FAIL_JPA}</span>
+                </div>
+                <div className="border-t border-slate-200/60 pt-2 flex justify-between items-center">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase">Hukuman:</span>
+                  <span className="bg-red-50 text-red-700 px-2 py-0.5 rounded font-black border border-red-100">{hukuman}</span>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-[10px] text-slate-400 font-bold uppercase block">Minit Ringkas Sidang:</span>
+                <p className="p-3 bg-slate-50 border border-slate-100 rounded-xl font-medium leading-relaxed italic text-[11px] text-slate-600">
+                  {ringkasanHukuman || `DIHUKUM HUKUMAN: ${hukuman.toUpperCase()}`}
+                </p>
+              </div>
+
+              <p className="text-[10px] text-slate-500 font-medium leading-relaxed border-t border-slate-100 pt-3 text-center">
+                Perekodan ini akan menyelaraskan keputusan tatatertib dan menyegerakkan profil perkhidmatan penjawat awam ini dengan sistem HRMIS.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowConfirmModal(false)}
+                className="flex-1 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded-xl transition-all cursor-pointer text-xs"
+              >
+                Batal & Ubah Semula
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  handleSaveVerdict();
+                }}
+                className="flex-1 bg-gov-blue-700 hover:bg-gov-blue-800 text-white font-bold py-3 rounded-xl transition-all shadow-md shadow-gov-blue-700/20 hover:scale-[1.02] cursor-pointer text-xs flex items-center justify-center gap-1.5"
+              >
+                Ya, Sah & Rekod
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

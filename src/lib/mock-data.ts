@@ -493,5 +493,95 @@ export const INITIAL_CASES: CompleteCase[] = [
       TARIKH_TERIMA_PERAKUAN: '2026-04-07',
       TAHUN_KPI: 2026
     }
+  },
+  {
+    metadata: {
+      BIL: 7,
+      NO_RUJ_FAIL_JPA: 'JPA.C.P.100-2/4/18(12)',
+      BIL_IKUT_SUSUNAN_PAPER: '2026/06/18',
+      URL_LINK_GD: 'https://drive.google.com/drive/folders/7gHiJkLmNoPqRsTuVwXyZabCdEf',
+      URL_LINK_LSPRM_LPBI_ADUAN: 'https://aduan.sprm.gov.my/case/sprm-2026-99221',
+      URL_LINK_PP: 'https://docs.google.com/presentation/d/1wUMfOiibqpz3W-gbC1c0txTxUNZOAfHdN_ZWaopcA-8/edit?usp=sharing',
+      URL_LINK_SP: 'https://drive.google.com/file/d/7sp_ahmad/view',
+      URL_LINK_PH: '',
+      URL_LINK_SK: ''
+    },
+    officer: {
+      NAMA: 'Kamal bin Ariffin',
+      NO_KP: '841102145321',
+      TARIKH_LAHIR: '02-NOV-1984',
+      PILIHAN_UMUR_PERSARAAN: 60,
+      TARIKH_BERSARA: '02-NOV-2044',
+      JANTINA: 'L',
+      KAUM: 'MELAYU',
+      JAWATAN: 'Penolong Pengarah Gred M41',
+      SKIM: 'M - Pentadbiran dan Sokongan',
+      GRED: '41',
+      STATUS_JAWATAN: 'HAKIKI',
+      TEMPAT_BERTUGAS: 'Kementerian Kesihatan Malaysia, Putrajaya',
+      NEGERI: 'W.P. PUTRAJAYA',
+      KEMENTERIAN: 'KKM - Kementerian Kesihatan Malaysia'
+    },
+    details: {
+      KESALAHAN_ALL: 'Pegawai didakwa menerima suapan bernilai RM5,000 daripada pihak kontraktor sebagai balasan mempercepatkan kelulusan perolehan bekalan peranti perubatan.',
+      JENIS_KESALAHAN: ['Salah Guna Kuasa', 'Rasuah/ Penyelewengan'],
+      RINGKASAN_KESALAHAN: 'Penerimaan suapan peranti perubatan RM5,000.',
+      ULASAN_URUS_SETIA: 'Kertas perakuan telah lengkap, draf surat pertuduhan (SP) sedia untuk tindakan Lembaga Tatatertib.',
+      PUNCA_KES: 'SPRM'
+    },
+    workflow: {
+      STATUS_KATEGORI: 'D01 SP - Penyediaan Surat Pertuduhan - Pegawai Kes',
+      STATUS_KATEGORI_UTAMA: 'Surat Pertuduhan (SP)',
+      STATUS_KEMASKINI_KES_DI_HRMIS: 'SP Updated',
+      PEGAWAI_KES: '02) KPP OA1 - EZLY (OA)',
+      TAHUN_TERIMA: 2026,
+      TARIKH_TERIMA_PERAKUAN: '2026-06-18',
+      TAHUN_KPI: 2026
+    }
+  },
+  {
+    metadata: {
+      BIL: 8,
+      NO_RUJ_FAIL_JPA: 'JPA.C.P.100-2/4/19(03)',
+      BIL_IKUT_SUSUNAN_PAPER: '2026/06/25',
+      URL_LINK_GD: 'https://drive.google.com/drive/folders/8hIjKlMnOpQrStUvWxYzAbCdEfG',
+      URL_LINK_LSPRM_LPBI_ADUAN: '',
+      URL_LINK_PP: 'https://docs.google.com/presentation/d/1wUMfOiibqpz3W-gbC1c0txTxUNZOAfHdN_ZWaopcA-8/edit?usp=sharing',
+      URL_LINK_SP: 'https://drive.google.com/file/d/8sp_norzihan/view',
+      URL_LINK_PH: '',
+      URL_LINK_SK: ''
+    },
+    officer: {
+      NAMA: 'Norzihan binti Ismail',
+      NO_KP: '810612085442',
+      TARIKH_LAHIR: '12-JUN-1981',
+      PILIHAN_UMUR_PERSARAAN: 60,
+      TARIKH_BERSARA: '12-JUN-2041',
+      JANTINA: 'P',
+      KAUM: 'MELAYU',
+      JAWATAN: 'Pegawai Tadbir Gred N41',
+      SKIM: 'N - Pentadbiran dan Sokongan',
+      GRED: '41',
+      STATUS_JAWATAN: 'HAKIKI',
+      TEMPAT_BERTUGAS: 'Kementerian Dalam Negeri, Putrajaya',
+      NEGERI: 'W.P. PUTRAJAYA',
+      KEMENTERIAN: 'KDN - Kementerian Dalam Negeri'
+    },
+    details: {
+      KESALAHAN_ALL: 'Membuat kenyataan awam yang memburukkan nama perkhidmatan awam dan jabatan di akaun media sosial Facebook peribadi berkaitan skim kenaikan pangkat.',
+      JENIS_KESALAHAN: ['Mencemar Nama Perkhidmatan Awam', 'Ingkar Perintah'],
+      RINGKASAN_KESALAHAN: 'Kenyataan awam memburukkan jabatan di Facebook.',
+      ULASAN_URUS_SETIA: 'Ulasan bertulis pegawai telah ditolak oleh pengerusi. Sedia untuk perbicaraan dan keputusan hukuman.',
+      PUNCA_KES: 'ADUAN'
+    },
+    workflow: {
+      STATUS_KATEGORI: 'D01 SP - Penyediaan Surat Pertuduhan - Pegawai Kes',
+      STATUS_KATEGORI_UTAMA: 'Surat Pertuduhan (SP)',
+      STATUS_KEMASKINI_KES_DI_HRMIS: 'SP Updated',
+      PEGAWAI_KES: '03) KPP OA2 - SHAHRIMAN (OA)',
+      TAHUN_TERIMA: 2026,
+      TARIKH_TERIMA_PERAKUAN: '2026-06-25',
+      TAHUN_KPI: 2026
+    }
   }
 ]
