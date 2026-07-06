@@ -386,7 +386,7 @@ export default function OfficerProfileDetail() {
 
                       {/* Fasa Aliran Utama */}
                       <td className="py-4.5 px-6">
-                        <span className={`px-2.5 py-1 rounded-full border text-[9px] font-bold uppercase tracking-wider inline-block ${getStatusBadge(c.workflow.STATUS_KATEGORI_UTAMA)}`}>
+                        <span className={`inline-block whitespace-nowrap px-2.5 py-1 rounded-full border text-[9px] font-bold uppercase tracking-wider ${getStatusBadge(c.workflow.STATUS_KATEGORI_UTAMA)}`}>
                           {c.workflow.STATUS_KATEGORI_UTAMA}
                         </span>
                       </td>

@@ -642,10 +642,9 @@ export default function AdminCharts({ cases }: AdminChartsProps) {
                       <p className="text-slate-600 font-medium leading-relaxed">
                         {c.details.RINGKASAN_KESALAHAN}
                       </p>
-                      {/* Tags */}
                       <div className="flex flex-wrap gap-1">
                         {c.details.JENIS_KESALAHAN?.map((j, jidx) => (
-                          <span key={jidx} className="bg-slate-100 border border-slate-200 text-slate-500 font-bold px-2 py-0.5 rounded text-[9px] uppercase">
+                          <span key={jidx} className="inline-block whitespace-nowrap bg-slate-100 border border-slate-200 text-slate-500 font-bold px-2 py-0.5 rounded text-[9px] uppercase">
                             {j}
                           </span>
                         ))}

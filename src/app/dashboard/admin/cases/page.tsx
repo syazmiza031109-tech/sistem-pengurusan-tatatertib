@@ -141,20 +141,20 @@ export default function CasesDirectory() {
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex flex-wrap gap-1">
-                        {c.details.JENIS_KESALAHAN.slice(0, 2).map((jk, idx) => (
-                          <span key={idx} className="bg-slate-100 text-slate-600 text-[9px] px-2 py-0.5 rounded-full">
+                         {c.details.JENIS_KESALAHAN.slice(0, 2).map((jk, idx) => (
+                          <span key={idx} className="inline-block whitespace-nowrap bg-slate-100 text-slate-600 text-[9px] px-2 py-0.5 rounded-full">
                             {jk}
                           </span>
                         ))}
                         {c.details.JENIS_KESALAHAN.length > 2 && (
-                          <span className="bg-slate-100 text-slate-600 text-[9px] px-2 py-0.5 rounded-full font-bold">
+                          <span className="inline-block whitespace-nowrap bg-slate-100 text-slate-600 text-[9px] px-2 py-0.5 rounded-full font-bold">
                             +{c.details.JENIS_KESALAHAN.length - 2} lagi
                           </span>
                         )}
                       </div>
                     </td>
                     <td className="py-4 px-6">
-                      <span className={`px-2.5 py-1 rounded-full border text-[9px] font-bold uppercase tracking-wider ${getStatusBadge(c.workflow.STATUS_KATEGORI_UTAMA)}`}>
+                      <span className={`inline-block whitespace-nowrap px-2.5 py-1 rounded-full border text-[9px] font-bold uppercase tracking-wider ${getStatusBadge(c.workflow.STATUS_KATEGORI_UTAMA)}`}>
                         {c.workflow.STATUS_KATEGORI_UTAMA}
                       </span>
                     </td>
