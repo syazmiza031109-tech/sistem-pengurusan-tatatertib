@@ -602,14 +602,14 @@ export default function AdminCharts({ cases }: AdminChartsProps) {
         </div>
 
         {/* Detailed Table Grid */}
-        <div className="overflow-x-auto rounded-2xl border border-slate-200">
+        <div className="overflow-x-auto overflow-y-auto max-h-[600px] rounded-2xl border border-slate-200 custom-scrollbar">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
-                <th className="px-5 py-4 w-32">Tarikh Terima</th>
-                <th className="px-5 py-4 w-80">Nama / No. KP / Jawatan / Gred</th>
-                <th className="px-5 py-4">Ringkasan Kesalahan</th>
-                <th className="px-5 py-4 w-60">Pegawai Kes</th>
+              <tr className="bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200 sticky top-0 z-10 shadow-[0_1px_0_0_rgba(226,232,240,1)]">
+                <th className="px-5 py-4 w-32 bg-slate-50">Tarikh Terima</th>
+                <th className="px-5 py-4 w-80 bg-slate-50">Nama / No. KP / Jawatan / Gred</th>
+                <th className="px-5 py-4 bg-slate-50">Ringkasan Kesalahan</th>
+                <th className="px-5 py-4 w-60 bg-slate-50">Pegawai Kes</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">

@@ -172,7 +172,7 @@ export default function ExecutiveDashboard() {
             </div>
 
             {trialCases.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-3 overflow-y-auto max-h-[500px] pr-1.5 custom-scrollbar">
                 {trialCases.map((c) => (
                   <button
                     key={c.metadata.NO_RUJ_FAIL_JPA}

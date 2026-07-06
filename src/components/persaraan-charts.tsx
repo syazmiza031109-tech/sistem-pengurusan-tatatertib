@@ -460,21 +460,21 @@ export default function PersaraanCharts({ cases }: PersaraanChartsProps) {
         </div>
 
         {/* Detailed Table Grid */}
-        <div className="overflow-x-auto rounded-2xl border border-slate-200">
+        <div className="overflow-x-auto overflow-y-auto max-h-[500px] rounded-2xl border border-slate-200 custom-scrollbar">
           <table className="w-full text-left border-collapse text-[11px]">
             <thead>
               {/* Blue header color matching Data Studio */}
-              <tr className="bg-gov-blue-750 text-white font-bold uppercase tracking-wider border-b border-slate-200">
-                <th className="px-4 py-3.5 w-24">Tarikh Terima</th>
-                <th className="px-4 py-3.5 w-24">Tarikh Serahan</th>
-                <th className="px-4 py-3.5 w-24">Kategori LTT</th>
-                <th className="px-4 py-3.5 w-60">Nama / KP / Jawatan / Gred</th>
-                <th className="px-4 py-3.5 w-24">Tarikh Bersara</th>
-                <th className="px-4 py-3.5">Ringkasan Kesalahan</th>
-                <th className="px-4 py-3.5">Ulasan Urus Setia</th>
-                <th className="px-3 py-3.5 text-center">Docs</th>
-                <th className="px-4 py-3.5">Status</th>
-                <th className="px-4 py-3.5">Pegawai Kes</th>
+              <tr className="bg-gov-blue-700 text-white font-bold uppercase tracking-wider border-b border-slate-200 sticky top-0 z-10 shadow-[0_1px_0_0_rgba(29,62,92,1)]">
+                <th className="px-4 py-3.5 w-24 bg-gov-blue-700">Tarikh Terima</th>
+                <th className="px-4 py-3.5 w-24 bg-gov-blue-700">Tarikh Serahan</th>
+                <th className="px-4 py-3.5 w-24 bg-gov-blue-700">Kategori LTT</th>
+                <th className="px-4 py-3.5 w-60 bg-gov-blue-700">Nama / KP / Jawatan / Gred</th>
+                <th className="px-4 py-3.5 w-24 bg-gov-blue-700">Tarikh Bersara</th>
+                <th className="px-4 py-3.5 bg-gov-blue-700">Ringkasan Kesalahan</th>
+                <th className="px-4 py-3.5 bg-gov-blue-700">Ulasan Urus Setia</th>
+                <th className="px-3 py-3.5 text-center bg-gov-blue-700">Docs</th>
+                <th className="px-4 py-3.5 bg-gov-blue-700">Status</th>
+                <th className="px-4 py-3.5 bg-gov-blue-700">Pegawai Kes</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-600 font-medium">

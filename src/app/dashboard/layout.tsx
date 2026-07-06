@@ -148,7 +148,7 @@ export default function DashboardLayout({
   });
 
   return (
-    <div className="flex-1 flex h-screen overflow-hidden bg-[#f8fafc] font-sans">
+    <div className="fixed inset-0 flex overflow-hidden bg-[#f8fafc] font-sans">
       {/* Sidebar Panel */}
       <aside className={`h-full dark-glass-panel text-slate-300 flex flex-col justify-between shrink-0 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-72'}`}>
         <div>

@@ -107,17 +107,17 @@ export default function CasesDirectory() {
         </div>
 
         {/* Data Grid Table */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[600px] rounded-2xl border border-slate-200 custom-scrollbar">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100">
-                <th className="py-4.5 px-6">Nama Pegawai Awam</th>
-                <th className="py-4.5 px-6">Skim & Gred</th>
-                <th className="py-4.5 px-6">No. Rujukan Fail</th>
-                <th className="py-4.5 px-6">Kategori Kesalahan</th>
-                <th className="py-4.5 px-6">Fasa Aliran Kes</th>
-                <th className="py-4.5 px-6">Status HRMIS</th>
-                <th className="py-4.5 px-6 text-center">Tindakan</th>
+              <tr className="bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 sticky top-0 z-10 shadow-[0_1px_0_0_rgba(226,232,240,1)]">
+                <th className="py-4.5 px-6 bg-slate-50">Nama Pegawai Awam</th>
+                <th className="py-4.5 px-6 bg-slate-50">Skim & Gred</th>
+                <th className="py-4.5 px-6 bg-slate-50">No. Rujukan Fail</th>
+                <th className="py-4.5 px-6 bg-slate-50">Kategori Kesalahan</th>
+                <th className="py-4.5 px-6 bg-slate-50">Fasa Aliran Kes</th>
+                <th className="py-4.5 px-6 bg-slate-50">Status HRMIS</th>
+                <th className="py-4.5 px-6 text-center bg-slate-50">Tindakan</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
