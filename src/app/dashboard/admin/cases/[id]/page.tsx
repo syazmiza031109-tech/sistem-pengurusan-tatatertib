@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { CompleteCase } from '@/lib/types';
 import { 
@@ -10,7 +10,7 @@ import {
   ArrowLeft, CircleUser, ExternalLink, Calendar, 
   MapPin, Database, FolderGit2,
   Edit, CloudLightning, FileSpreadsheet, RefreshCw, X, Check,
-  Presentation, Folder
+  Presentation, Folder, Search
 } from 'lucide-react';
 
 const getEmbedUrl = (url: string | undefined) => {
@@ -42,6 +42,29 @@ export default function OfficerProfileDetail() {
   const [connectingEmail, setConnectingEmail] = useState<boolean>(false);
   const [emailInput, setEmailInput] = useState<string>('syazmiza0304@gmail.com');
   const [connectionLogs, setConnectionLogs] = useState<string[]>([]);
+
+  // Searchable select component states & ref
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [dropdownSearch, setDropdownSearch] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredCasesForSelect = officerCases.filter(c => {
+    const term = dropdownSearch.toLowerCase();
+    return (
+      c.metadata.NO_RUJ_FAIL_JPA.toLowerCase().includes(term) ||
+      c.workflow.STATUS_KATEGORI_UTAMA.toLowerCase().includes(term)
+    );
+  });
 
   // Editing Modals State
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -545,18 +568,55 @@ export default function OfficerProfileDetail() {
               </div>
             </div>
             <div className="flex items-center gap-2.5">
-              <span className="text-xs text-slate-500 font-bold">Pilih Fail Kes:</span>
-              <select
-                value={selectedCaseId}
-                onChange={(e) => setSelectedCaseId(e.target.value)}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-gov-blue-500 transition-all bg-slate-50 cursor-pointer"
-              >
-                {officerCases.map((c) => (
-                  <option key={c.metadata.NO_RUJ_FAIL_JPA} value={c.metadata.NO_RUJ_FAIL_JPA}>
-                    {c.metadata.NO_RUJ_FAIL_JPA} ({c.workflow.STATUS_KATEGORI_UTAMA})
-                  </option>
-                ))}
-              </select>
+              <span className="text-xs text-slate-500 font-bold shrink-0">Cari & Pilih Fail Kes:</span>
+              <div className="relative w-[320px] md:w-[420px]" ref={dropdownRef}>
+                <div className="relative w-full">
+                  <input
+                    type="text"
+                    placeholder={activeCase ? `${activeCase.metadata.NO_RUJ_FAIL_JPA} (${activeCase.workflow.STATUS_KATEGORI_UTAMA})` : "Cari fail kes..."}
+                    value={dropdownSearch}
+                    onChange={(e) => {
+                      setDropdownSearch(e.target.value);
+                      setIsDropdownOpen(true);
+                    }}
+                    onFocus={() => setIsDropdownOpen(true)}
+                    className="w-full px-3.5 py-1.5 pr-10 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-gov-blue-500 transition-all bg-slate-50 text-slate-700 placeholder-slate-700 font-sans"
+                  />
+                  <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none text-slate-400">
+                    <Search className="h-4 w-4" />
+                  </div>
+                </div>
+
+                {isDropdownOpen && (
+                  <div className="absolute right-0 mt-1.5 w-full bg-white border border-slate-200 rounded-2xl shadow-xl z-50 max-h-64 overflow-y-auto custom-scrollbar p-1.5 space-y-1 animate-fade-in">
+                    {filteredCasesForSelect.length > 0 ? (
+                      filteredCasesForSelect.map((c) => (
+                        <button
+                          type="button"
+                          key={c.metadata.NO_RUJ_FAIL_JPA}
+                          onClick={() => {
+                            setSelectedCaseId(c.metadata.NO_RUJ_FAIL_JPA);
+                            setDropdownSearch('');
+                            setIsDropdownOpen(false);
+                          }}
+                          className={`w-full text-left p-2.5 rounded-xl text-xs flex flex-col gap-0.5 hover:bg-slate-50 transition-colors cursor-pointer ${
+                            selectedCaseId === c.metadata.NO_RUJ_FAIL_JPA ? 'bg-gov-blue-50/50 text-gov-blue-800 font-bold' : 'text-slate-700'
+                          }`}
+                        >
+                          <div className="flex justify-between items-center w-full">
+                            <span className="font-extrabold text-[11px] truncate">{c.metadata.NO_RUJ_FAIL_JPA}</span>
+                            <span className="text-[8px] font-bold bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 uppercase shrink-0">{c.workflow.STATUS_KATEGORI_UTAMA}</span>
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center text-slate-400 text-xs font-semibold">
+                        Tiada fail kes sepadan
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           <div className="grid md:grid-cols-12 gap-6 items-stretch">
