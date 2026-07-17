@@ -104,7 +104,38 @@ export interface WorkflowKPIStatus {
   KEPUTUSAN_RAYUAN?: string;
   TARIKH_MLRTT?: string;
   TEMPOH_TIDAK_LAYAK_NAIK_PANGKAT?: number;
+  CURRENT_PP_BODY?: PPBodyRole | 'COMPLETED';
+  PP_HISTORY?: PPActionLog[];
+  STATUS_HISTORY?: StatusUpdateLog[];
 }
+
+export interface StatusUpdateLog {
+  updatedAt: string;
+  updatedBy: string;
+  role: string;
+  actionType: 'STATUS_UPDATE' | 'DATE_UPDATE' | 'CASE_EDIT' | 'WORKFLOW_ACTION';
+  description: string;
+}
+
+export type PPBodyRole = 
+  | 'Pegawai Kes' 
+  | 'KPP' 
+  | 'TPB(K)OA' 
+  | 'TPB(K)O' 
+  | 'Urus Setia' 
+  | 'PBK' 
+  | 'TKPPA(P)' 
+  | 'KPPA' 
+  | 'KSN';
+
+export interface PPActionLog {
+  body: PPBodyRole;
+  actionDate: string;
+  status: string;
+  ulasan: string;
+  updatedBy: string;
+}
+
 
 export interface CompleteCase {
   metadata: SystemReferenceMetadata;

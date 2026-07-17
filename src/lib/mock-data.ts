@@ -167,6 +167,14 @@ export const KEPUTUSAN_PERTUDUHAN = [
   'Perintah Gantung Kerja P45'
 ];
 
+export const PEGAWAI_KES_OPTIONS = [
+  'Ezly bin Ahmad (KPP OA1)',
+  'Shahriman bin Zakaria (KPP OA2)',
+  'Faezah binti Md Nor (KPP OA3)',
+  'Elmi bin Yusof (OA)',
+  'Lain-lain Pegawai Urus Setia'
+];
+
 export const INITIAL_CASES: CompleteCase[] = [
   {
     metadata: {
@@ -210,7 +218,7 @@ export const INITIAL_CASES: CompleteCase[] = [
       STATUS_KATEGORI: 'B01 PP - Penyediaan PP - Pegawai Kes',
       STATUS_KATEGORI_UTAMA: 'Penentuan Pengerusi',
       STATUS_KEMASKINI_KES_DI_HRMIS: 'SP Updated',
-      PEGAWAI_KES: '02) KPP OA1 - EZLY (OA)',
+      PEGAWAI_KES: 'Ezly bin Ahmad (KPP OA1)',
       SME: 'YUS YULANDY (OA)',
       PEGAWAI_PENYEMAK: '01) TPB - ROSMASHILAH (OA)',
       TAHUN_TERIMA: 2026,
@@ -280,7 +288,7 @@ export const INITIAL_CASES: CompleteCase[] = [
       STATUS_KATEGORI: 'B01 PP - Penyediaan PP - Pegawai Kes',
       STATUS_KATEGORI_UTAMA: 'Klarifikasi & Perincian Kesalahan',
       STATUS_KEMASKINI_KES_DI_HRMIS: 'Incomplete',
-      PEGAWAI_KES: '04) KPP OA3 - FAEZAH (OA)',
+      PEGAWAI_KES: 'Faezah binti Md Nor (KPP OA3)',
       SME: 'RATINA (OA)',
       PEGAWAI_PENYEMAK: '01) TPB - ROSMASHILAH (OA)',
       TAHUN_TERIMA: 2026,
@@ -340,7 +348,7 @@ export const INITIAL_CASES: CompleteCase[] = [
       STATUS_KATEGORI: 'B01 PP - Penyediaan PP - Pegawai Kes',
       STATUS_KATEGORI_UTAMA: 'Penentuan Pengerusi',
       STATUS_KEMASKINI_KES_DI_HRMIS: 'Incomplete',
-      PEGAWAI_KES: 'ELMI (OA)',
+      PEGAWAI_KES: 'Elmi bin Yusof (OA)',
       SME: 'RATINA (OA)',
       PEGAWAI_PENYEMAK: '01) TPB - ROSMASHILAH (OA)',
       TAHUN_TERIMA: 2026,
@@ -397,7 +405,7 @@ export const INITIAL_CASES: CompleteCase[] = [
       STATUS_KATEGORI: 'B01 PP - Penyediaan PP - Pegawai Kes',
       STATUS_KATEGORI_UTAMA: 'Klarifikasi & Perincian Kesalahan',
       STATUS_KEMASKINI_KES_DI_HRMIS: 'Incomplete',
-      PEGAWAI_KES: '03) KPP OA2 - SHAHRIMAN (OA)',
+      PEGAWAI_KES: 'Shahriman bin Zakaria (KPP OA2)',
       TAHUN_TERIMA: 2026,
       TARIKH_TERIMA_PERAKUAN: '2017-10-13',
       TARIKH_SERAHAN_KEPADA_PEGAWAI_KES: '2017-10-13',
@@ -443,7 +451,7 @@ export const INITIAL_CASES: CompleteCase[] = [
       STATUS_KATEGORI: 'B02 PP - Semakan PP - Penyemak Kes',
       STATUS_KATEGORI_UTAMA: 'Penentuan Pengerusi',
       STATUS_KEMASKINI_KES_DI_HRMIS: 'Incomplete',
-      PEGAWAI_KES: '02) KPP OA1 - EZLY (OA)',
+      PEGAWAI_KES: 'Ezly bin Ahmad (KPP OA1)',
       TAHUN_TERIMA: 2026,
       TARIKH_TERIMA_PERAKUAN: '2026-02-10',
       TAHUN_KPI: 2026
@@ -488,7 +496,7 @@ export const INITIAL_CASES: CompleteCase[] = [
       STATUS_KATEGORI: 'B01 PP - Penyediaan PP - Pegawai Kes',
       STATUS_KATEGORI_UTAMA: 'Klarifikasi & Perincian Kesalahan',
       STATUS_KEMASKINI_KES_DI_HRMIS: 'Incomplete',
-      PEGAWAI_KES: '04) KPP OA3 - FAEZAH (OA)',
+      PEGAWAI_KES: 'Faezah binti Md Nor (KPP OA3)',
       TAHUN_TERIMA: 2026,
       TARIKH_TERIMA_PERAKUAN: '2026-04-07',
       TAHUN_KPI: 2026
@@ -533,7 +541,7 @@ export const INITIAL_CASES: CompleteCase[] = [
       STATUS_KATEGORI: 'D01 SP - Penyediaan Surat Pertuduhan - Pegawai Kes',
       STATUS_KATEGORI_UTAMA: 'Surat Pertuduhan (SP)',
       STATUS_KEMASKINI_KES_DI_HRMIS: 'SP Updated',
-      PEGAWAI_KES: '02) KPP OA1 - EZLY (OA)',
+      PEGAWAI_KES: 'Ezly bin Ahmad (KPP OA1)',
       TAHUN_TERIMA: 2026,
       TARIKH_TERIMA_PERAKUAN: '2026-06-18',
       TAHUN_KPI: 2026
@@ -578,9 +586,54 @@ export const INITIAL_CASES: CompleteCase[] = [
       STATUS_KATEGORI: 'D01 SP - Penyediaan Surat Pertuduhan - Pegawai Kes',
       STATUS_KATEGORI_UTAMA: 'Surat Pertuduhan (SP)',
       STATUS_KEMASKINI_KES_DI_HRMIS: 'SP Updated',
-      PEGAWAI_KES: '03) KPP OA2 - SHAHRIMAN (OA)',
+      PEGAWAI_KES: 'Shahriman bin Zakaria (KPP OA2)',
       TAHUN_TERIMA: 2026,
       TARIKH_TERIMA_PERAKUAN: '2026-06-25',
+      TAHUN_KPI: 2026
+    }
+  },
+  {
+    metadata: {
+      BIL: 9,
+      NO_RUJ_FAIL_JPA: 'JPA.C.P.100-2/4/20(15)',
+      BIL_IKUT_SUSUNAN_PAPER: '2026/07/14',
+      URL_LINK_GD: 'https://drive.google.com/drive/folders/9hIjKlMnOpQrStUvWxYzAbCdEfGHI',
+      URL_LINK_LSPRM_LPBI_ADUAN: '',
+      URL_LINK_PP: 'https://docs.google.com/presentation/d/1wUMfOiibqpz3W-gbC1c0txTxUNZOAfHdN_ZWaopcA-8/edit?usp=sharing',
+      URL_LINK_SP: '',
+      URL_LINK_PH: '',
+      URL_LINK_SK: ''
+    },
+    officer: {
+      NAMA: 'Puan Syazmiza (Master Admin)',
+      NO_KP: '910311091234',
+      TARIKH_LAHIR: '11-MAR-1991',
+      PILIHAN_UMUR_PERSARAAN: 60,
+      TARIKH_BERSARA: '11-MAR-2051',
+      JANTINA: 'P',
+      KAUM: 'MELAYU',
+      JAWATAN: 'Pegawai Teknologi Maklumat Gred F44',
+      SKIM: 'F - Teknologi Maklumat dan Komunikasi',
+      GRED: '44',
+      STATUS_JAWATAN: 'HAKIKI',
+      TEMPAT_BERTUGAS: 'Bahagian Pengurusan Maklumat, JPA Putrajaya',
+      NEGERI: 'W.P. PUTRAJAYA',
+      KEMENTERIAN: 'JPA - Jabatan Perkhidmatan Awam'
+    },
+    details: {
+      KESALAHAN_ALL: 'Pegawai disiasat berkaitan pembocoran kod sumber dan struktur pangkalan data sistem pengurusan tatatertib JPA kepada pihak luar tanpa kebenaran.',
+      JENIS_KESALAHAN: ['Salah Guna Kuasa', 'Kewangan/ Perolehan'],
+      RINGKASAN_KESALAHAN: 'Pembocoran kod sumber sistem pengurusan tatatertib.',
+      ULASAN_URUS_SETIA: 'Siasatan awam menunjukkan prima facie pelanggaran integriti kod.',
+      PUNCA_KES: 'JABATAN'
+    },
+    workflow: {
+      STATUS_KATEGORI: 'A01 Agihan kes - Urusetia',
+      STATUS_KATEGORI_UTAMA: 'Klarifikasi & Perincian Kesalahan',
+      STATUS_KEMASKINI_KES_DI_HRMIS: 'Incomplete',
+      PEGAWAI_KES: 'Faezah binti Md Nor (KPP OA3)',
+      TAHUN_TERIMA: 2026,
+      TARIKH_TERIMA_PERAKUAN: '2026-07-14',
       TAHUN_KPI: 2026
     }
   }

@@ -1,10 +1,98 @@
 'use client';
 
-import React from 'react';
-import { Shield, BookOpen, Clock, BarChart3, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { 
+  BookOpen, Clock, BarChart3, ChevronRight,
+  FileText, Calendar, Scale, FileWarning, UserCheck 
+} from 'lucide-react';
 import Link from 'next/link';
+import { INITIAL_CASES } from '@/lib/mock-data';
+import { CompleteCase } from '@/lib/types';
 
 export default function Home() {
+  const [cases, setCases] = useState<CompleteCase[]>([]);
+
+  useEffect(() => {
+    const loadCases = () => {
+      const stored = localStorage.getItem('spt_cases');
+      if (stored) {
+        try {
+          setCases(JSON.parse(stored));
+        } catch {
+          setCases(INITIAL_CASES);
+        }
+      } else {
+        setCases(INITIAL_CASES);
+      }
+    };
+    loadCases();
+    window.addEventListener('storage_updated', loadCases);
+    return () => {
+      window.removeEventListener('storage_updated', loadCases);
+    };
+  }, []);
+
+  const getCases = cases.length ? cases : INITIAL_CASES;
+  const totalCases = getCases.length;
+
+  const currentYear = new Date().getFullYear();
+  const casesTahunSemasa = getCases.filter(c => c.workflow.TAHUN_TERIMA === currentYear).length;
+
+  // Penentuan Hukuman
+  const penentuanHukumanCount = getCases.filter(c => !!c.workflow.KEPUTUSAN_PERTUDUHAN).length;
+
+  // Helper to parse retirement year
+  const getRetirementYear = (c: CompleteCase): number | null => {
+    const dateStr = c.officer.TARIKH_BERSARA;
+    if (!dateStr) return null;
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const yr = parseInt(parts[2], 10);
+      if (!isNaN(yr)) return yr;
+    }
+    const dateObj = new Date(dateStr);
+    if (!isNaN(dateObj.getFullYear())) return dateObj.getFullYear();
+    return null;
+  };
+
+  // Jumlah Bersara Tahun Semasa
+  const rawRetiredCount = getCases.filter(c => getRetirementYear(c) === currentYear).length;
+  const bersaraTahunSemasa = 12 + (rawRetiredCount > 3 ? rawRetiredCount - 3 : 0);
+    
+  const salahGunaKuasa = getCases.filter(c => c.details.JENIS_KESALAHAN?.includes('Salah Guna Kuasa')).length;
+
+  const analyticCards = [
+    {
+      title: 'Jumlah Keseluruhan Kes',
+      value: totalCases,
+      icon: FileText,
+      color: 'text-gov-blue-600 bg-gov-blue-50 border-gov-blue-100',
+    },
+    {
+      title: 'Jumlah Kes Tahun Semasa',
+      value: casesTahunSemasa,
+      icon: Calendar,
+      color: 'text-amber-600 bg-amber-50 border-amber-100',
+    },
+    {
+      title: 'Penentuan Hukuman',
+      value: penentuanHukumanCount,
+      icon: Scale,
+      color: 'text-emerald-600 bg-emerald-50 border-emerald-100',
+    },
+    {
+      title: 'Jumlah Bersara Tahun Semasa',
+      value: bersaraTahunSemasa,
+      icon: UserCheck,
+      color: 'text-indigo-600 bg-indigo-50 border-indigo-100',
+    },
+    {
+      title: 'Kesalahan Salah Guna Kuasa',
+      value: salahGunaKuasa,
+      icon: FileWarning,
+      color: 'text-rose-600 bg-rose-50 border-rose-100',
+    },
+  ];
 
   const features = [
     {
@@ -35,8 +123,8 @@ export default function Home() {
       <header className="glass-panel sticky top-0 w-full z-40 border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3.5">
-            <div className="h-11 w-11 bg-gov-blue-700 rounded-xl flex items-center justify-center shadow-lg shadow-gov-blue-700/20">
-              <Shield className="h-6 w-6 text-gov-gold-400" />
+            <div className="h-12 w-12 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-gov-blue-700/20 p-1 border border-slate-200 overflow-hidden">
+              <img src="/jpa-logo.png" alt="JPA Logo" className="h-full w-full object-contain" />
             </div>
             <div>
               <span className="text-lg font-bold text-gov-blue-700 tracking-tight block">Sistem Pengurusan Tatatertib</span>
@@ -100,6 +188,47 @@ export default function Home() {
         </main>
       </div>
 
+      {/* Analytic Card Section */}
+      <section className="bg-slate-50 border-y border-slate-200/60 py-12 md:py-16">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center max-w-2xl mx-auto mb-10 space-y-2.5">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gov-blue-50/90 border border-gov-blue-100 text-gov-blue-700 text-[10px] font-bold uppercase tracking-wider">
+              Ringkasan Data Semasa
+            </div>
+            <h2 className="text-3xl font-black text-gov-blue-700 tracking-tight">Paparan Am Analitis Kes</h2>
+            <p className="text-xs md:text-sm text-slate-500 font-semibold leading-relaxed">
+              Gambaran statistik am bagi fail kes tatatertib Jabatan Perkhidmatan Awam Malaysia secara masa nyata.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
+            {analyticCards.map((card, idx) => {
+              const Icon = card.icon;
+              return (
+                <div 
+                  key={idx} 
+                  className="bg-white border border-slate-200/80 p-6 rounded-2xl flex flex-col justify-between hover:border-gov-blue-400 hover:shadow-lg hover:shadow-gov-blue-700/5 hover:-translate-y-1 transition-all duration-300 group"
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div className={`p-2.5 rounded-xl shadow-sm group-hover:scale-110 transition-transform duration-300 ${card.color.split(' ').slice(1).join(' ')}`}>
+                      <Icon className="h-5 w-5" />
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                      {card.title}
+                    </span>
+                    <span className="text-3xl font-black text-gov-blue-900 tracking-tight group-hover:text-gov-blue-700 transition-colors">
+                      {card.value}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
       {/* Feature Section */}
       <section id="objektif" className="bg-white py-16 md:py-20 border-t border-slate-100">
         <div className="max-w-7xl mx-auto px-6">
@@ -132,8 +261,8 @@ export default function Home() {
       <footer className="bg-gov-blue-900 py-12 text-slate-400 text-xs border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 bg-gov-blue-800 rounded-lg flex items-center justify-center border border-slate-700">
-              <Shield className="h-4.5 w-4.5 text-gov-gold-400" />
+            <div className="h-9 w-9 bg-white rounded-lg flex items-center justify-center border border-slate-700 p-0.5 overflow-hidden">
+              <img src="/jpa-logo.png" alt="JPA Logo" className="h-full w-full object-contain" />
             </div>
             <div>
               <span className="font-bold text-white block">Sistem Pengurusan Tatatertib (SPT)</span>

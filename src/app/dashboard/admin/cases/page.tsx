@@ -122,9 +122,9 @@ export default function CasesDirectory() {
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700">
               {filteredCases.length > 0 ? (
-                filteredCases.map((c) => (
+                filteredCases.map((c, idx) => (
                   <tr 
-                    key={c.metadata.NO_RUJ_FAIL_JPA} 
+                    key={`${c.metadata.BIL}-${c.metadata.NO_RUJ_FAIL_JPA}-${idx}`} 
                     className="hover:bg-slate-50/50 transition-colors cursor-pointer group"
                     onClick={() => router.push(`/dashboard/admin/cases/${c.officer.NO_KP}`)}
                   >

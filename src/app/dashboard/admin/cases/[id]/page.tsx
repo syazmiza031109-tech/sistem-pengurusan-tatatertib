@@ -2,15 +2,17 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { CompleteCase } from '@/lib/types';
+import { CompleteCase, StatusUpdateLog } from '@/lib/types';
+import { useAuth } from '@/components/auth-provider';
 import { 
-  INITIAL_CASES, GRADES, MINISTRIES, STATES, KAUM, STATUS_JAWATAN, PUNCA_KES 
+  INITIAL_CASES, GRADES, MINISTRIES, STATES, KAUM, STATUS_JAWATAN, PUNCA_KES, PEGAWAI_KES_OPTIONS
 } from '@/lib/mock-data';
+import { PembentanganWorkflowPanel } from '@/components/pembentangan-workflow-panel';
 import { 
   ArrowLeft, CircleUser, ExternalLink, Calendar, 
   MapPin, Database, FolderGit2,
-  Edit, CloudLightning, FileSpreadsheet, RefreshCw, X, Check,
-  Presentation, Folder, Search
+  Edit, CloudLightning, RefreshCw, X, Check,
+  Presentation, Folder, Search, AlertCircle, Copy, ChevronDown, ScrollText
 } from 'lucide-react';
 
 const getEmbedUrl = (url: string | undefined) => {
@@ -32,13 +34,203 @@ export default function OfficerProfileDetail() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
+  const { user } = useAuth();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyNoKp = () => {
+    if (!officerProfile) return;
+    navigator.clipboard.writeText(officerProfile.NO_KP);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const canEditCase = (casePegawai: string, caseIdParam?: string) => {
+    if (!user) return false;
+    if (user.role === 'Super Admin' || user.isMaster) return true;
+
+    // 1. Check direct ownership
+    const cleanUserName = user.name.toLowerCase().replace(/puan|encik/g, '').replace(/\(.*\)/g, '').trim();
+    const cleanCasePegawai = casePegawai.toLowerCase().trim();
+    
+    let isOwner = false;
+    if (cleanCasePegawai.includes(cleanUserName) || cleanUserName.includes(cleanCasePegawai)) {
+      isOwner = true;
+    } else {
+      const parts = cleanCasePegawai.split('-').map(p => p.trim());
+      if (parts.length > 1) {
+        const namePart = parts[1].split('(')[0].trim();
+        if (cleanUserName.includes(namePart) || namePart.includes(cleanUserName)) {
+          isOwner = true;
+        }
+      }
+    }
+    if (isOwner) return true;
+
+    // 2. Check temporary approved permission
+    const actualCaseId = caseIdParam || (editingCase?.metadata.NO_RUJ_FAIL_JPA) || selectedCaseId;
+    if (actualCaseId) {
+      const match = permissionRequests.find(r => 
+        r.caseId === actualCaseId && 
+        r.requestorEmail === user.email && 
+        r.status === 'APPROVED'
+      );
+      if (match && match.expiresAt) {
+        const hasExpired = new Date() > new Date(match.expiresAt);
+        if (!hasExpired) {
+          return true;
+        }
+      }
+    }
+
+    // 3. Allow if user is the current active workflow body (handling the case)
+    if (actualCaseId) {
+      const targetCase = cases.find(c => c.metadata.NO_RUJ_FAIL_JPA === actualCaseId);
+      if (targetCase && targetCase.workflow && targetCase.workflow.CURRENT_PP_BODY === user.role) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  const [permissionRequests, setPermissionRequests] = useState<any[]>([]);
+  const [, forceUpdate] = useState(0);
+
+  useEffect(() => {
+    const loadPerms = () => {
+      const stored = localStorage.getItem('spt_permission_requests');
+      if (stored) {
+        setPermissionRequests(JSON.parse(stored));
+      }
+    };
+    loadPerms();
+    window.addEventListener('spt_permission_changed', loadPerms);
+    return () => window.removeEventListener('spt_permission_changed', loadPerms);
+  }, [id]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      forceUpdate(prev => prev + 1);
+    }, 15000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const getPermissionTimeLeft = (caseIdParam: string) => {
+    const match = permissionRequests.find(r => 
+      r.caseId === caseIdParam && 
+      r.requestorEmail === user?.email && 
+      r.status === 'APPROVED'
+    );
+    if (match && match.expiresAt) {
+      const diffMs = new Date(match.expiresAt).getTime() - Date.now();
+      if (diffMs > 0) {
+        const hours = Math.floor(diffMs / (60 * 60 * 1000));
+        const mins = Math.floor((diffMs % (60 * 60 * 1000)) / (60 * 1000));
+        return `${hours}j ${mins}m`;
+      }
+    }
+    return null;
+  };
+
+  const handleRequestPermission = (targetCase: CompleteCase) => {
+    if (!user || !targetCase) return;
+    
+    const getPegawaiEmail = (pegInfo: string) => {
+      const clean = pegInfo.toLowerCase();
+      if (clean.includes('faezah')) return 'faezah@jpa.gov.my';
+      if (clean.includes('ezly')) return 'ezly@jpa.gov.my';
+      if (clean.includes('shahriman')) return 'shahriman@jpa.gov.my';
+      if (clean.includes('elmi')) return 'elmi@jpa.gov.my';
+      if (clean.includes('azhar')) return 'azhar@jpa.gov.my';
+      return 'azhar@jpa.gov.my';
+    };
+
+    const targetEmail = getPegawaiEmail(targetCase.workflow.PEGAWAI_KES);
+    
+    const newRequest = {
+      id: 'req_' + Date.now(),
+      caseId: targetCase.metadata.NO_RUJ_FAIL_JPA,
+      caseOfficerName: targetCase.officer.NAMA,
+      requestorName: user.name,
+      requestorEmail: user.email,
+      handlingPegawaiName: targetCase.workflow.PEGAWAI_KES,
+      handlingPegawaiEmail: targetEmail,
+      status: 'PENDING',
+      timestamp: new Date().toISOString()
+    };
+
+    const stored = localStorage.getItem('spt_permission_requests');
+    const list = stored ? JSON.parse(stored) : [];
+    
+    const filtered = list.filter((r: any) => !(r.caseId === targetCase.metadata.NO_RUJ_FAIL_JPA && r.requestorEmail === user.email));
+    filtered.push(newRequest);
+    localStorage.setItem('spt_permission_requests', JSON.stringify(filtered));
+
+    const emailLogsRaw = localStorage.getItem('spt_email_logs');
+    const emailLogs = emailLogsRaw ? JSON.parse(emailLogsRaw) : [];
+    emailLogs.unshift({
+      id: Date.now(),
+      recipient: targetEmail,
+      subject: `[SPT JPA] Permohonan Izin Edit Fail Kes: ${targetCase.metadata.NO_RUJ_FAIL_JPA}`,
+      body: `Assalamualaikum / Salam Sejahtera,\n\nPegawai Kes ${user.name} (${user.email}) telah memohon kebenaran untuk mengakses dan meminda fail kes tatatertib bagi:\n\nNama Pegawai Awam: ${targetCase.officer.NAMA}\nNo. Rujukan Fail: ${targetCase.metadata.NO_RUJ_FAIL_JPA}\n\nSila layari portal SPT JPA untuk meluluskan atau menolak permohonan ini di bahagian Notifikasi.\n\nHak Cipta Urus Setia Tatatertib JPA.`,
+      timestamp: new Date().toISOString()
+    });
+    localStorage.setItem('spt_email_logs', JSON.stringify(emailLogs));
+
+    setPermissionRequests(filtered);
+    window.dispatchEvent(new CustomEvent('spt_permission_changed'));
+  };
+
+  const syncCaseToSheets = async (targetCase: CompleteCase) => {
+    const liveUrl = localStorage.getItem('spt_gsheet_url');
+    if (!liveUrl) return;
+
+    const row = [
+      targetCase.metadata.BIL || '',
+      targetCase.metadata.NO_RUJ_FAIL_JPA || '',
+      targetCase.metadata.BIL_IKUT_SUSUNAN_PAPER || '',
+      targetCase.metadata.URL_LINK_GD || '',
+      targetCase.metadata.URL_LINK_LSPRM_LPBI_ADUAN || '',
+      targetCase.metadata.URL_LINK_PP || '',
+      '', // URL_LINK_PK does not exist in types
+      targetCase.metadata.URL_LINK_SP || '',
+      targetCase.metadata.URL_LINK_PH || '',
+      targetCase.metadata.URL_LINK_SK || '',
+      '', // URL_LINK_SL does not exist in types
+      '', // Column L (empty)
+      targetCase.officer.NAMA || '',
+      targetCase.officer.NO_KP || '',
+      targetCase.officer.TARIKH_LAHIR || '',
+      targetCase.officer.PILIHAN_UMUR_PERSARAAN || '',
+      targetCase.officer.TARIKH_BERSARA || '',
+      targetCase.officer.JANTINA || '',
+      targetCase.officer.KAUM || '',
+      targetCase.officer.JAWATAN || '',
+      targetCase.officer.SKIM || '',
+      targetCase.officer.GRED || ''
+    ];
+
+    try {
+      await fetch(liveUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ row })
+      });
+      console.log('Successfully synced case to Google Sheets in the background!');
+    } catch (err) {
+      console.error('Failed background sync to Google Sheets:', err);
+    }
+  };
 
   const [cases, setCases] = useState<CompleteCase[]>([]);
   const [officerCases, setOfficerCases] = useState<CompleteCase[]>([]);
   const [officerProfile, setOfficerProfile] = useState<CompleteCase['officer'] | null>(null);
 
   // New tab state for case presentation and file table selection
-  const [activeSubTab, setActiveSubTab] = useState<'senarai' | 'pembentangan'>('senarai');
+  const [activeSubTab, setActiveSubTab] = useState<'senarai' | 'pembentangan' | 'log'>('senarai');
   const [selectedCaseId, setSelectedCaseId] = useState<string>('');
 
   // Google connectivity simulation states
@@ -90,7 +282,6 @@ export default function OfficerProfileDetail() {
   const [caseForm, setCaseForm] = useState<CompleteCase | null>(null);
 
   // Sync state
-  const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
@@ -145,6 +336,11 @@ export default function OfficerProfileDetail() {
     setOfficerCases(updatedCases.filter(c => c.officer.NO_KP === profileForm.NO_KP));
     setShowProfileModal(false);
 
+    // Sync all updated cases to sheets in background
+    updatedCases.filter(c => c.officer.NO_KP === profileForm.NO_KP).forEach(c => {
+      syncCaseToSheets(c);
+    });
+
     // Show success banner
     setSaveSuccess('Profil Pegawai telah berjaya dikemaskini dan disegerakkan.');
     setTimeout(() => setSaveSuccess(null), 4000);
@@ -155,15 +351,10 @@ export default function OfficerProfileDetail() {
     }
   };
 
-  // Case Save Handler
-  const handleSaveCase = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!caseForm || !editingCase) return;
-
-    // Update the specific case matching the primary key NO_RUJ_FAIL_JPA
+  const handleWorkflowActionSubmit = (updatedCase: CompleteCase) => {
     const updatedCases = cases.map(c => {
-      if (c.metadata.NO_RUJ_FAIL_JPA === editingCase.metadata.NO_RUJ_FAIL_JPA) {
-        return { ...caseForm };
+      if (c.metadata.NO_RUJ_FAIL_JPA === updatedCase.metadata.NO_RUJ_FAIL_JPA) {
+        return updatedCase;
       }
       return c;
     });
@@ -171,33 +362,145 @@ export default function OfficerProfileDetail() {
     localStorage.setItem('spt_cases', JSON.stringify(updatedCases));
     setCases(updatedCases);
     setOfficerCases(updatedCases.filter(c => c.officer.NO_KP === id));
+    
+    syncCaseToSheets(updatedCase);
+    
+    window.dispatchEvent(new Event('storage_updated'));
+    
+    setSaveSuccess('Keputusan tindakan ulasan berjaya direkodkan.');
+    setTimeout(() => setSaveSuccess(null), 4000);
+  };
+
+  // Case Save Handler
+  const handleSaveCase = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!caseForm || !editingCase) return;
+
+    // Track changes
+    const changes: string[] = [];
+
+    // Compare fields
+    if (editingCase.workflow.STATUS_KATEGORI_UTAMA !== caseForm.workflow.STATUS_KATEGORI_UTAMA) {
+      changes.push(`Fasa Utama diubah daripada "${editingCase.workflow.STATUS_KATEGORI_UTAMA}" kepada "${caseForm.workflow.STATUS_KATEGORI_UTAMA}"`);
+    }
+    if (editingCase.workflow.STATUS_KEMASKINI_KES_DI_HRMIS !== caseForm.workflow.STATUS_KEMASKINI_KES_DI_HRMIS) {
+      changes.push(`Status HRMIS diubah daripada "${editingCase.workflow.STATUS_KEMASKINI_KES_DI_HRMIS}" kepada "${caseForm.workflow.STATUS_KEMASKINI_KES_DI_HRMIS}"`);
+    }
+    if (editingCase.workflow.PEGAWAI_KES !== caseForm.workflow.PEGAWAI_KES) {
+      changes.push(`Pegawai Kes diubah daripada "${editingCase.workflow.PEGAWAI_KES}" kepada "${caseForm.workflow.PEGAWAI_KES}"`);
+    }
+
+    const dateFields: (keyof typeof editingCase.workflow)[] = [
+      'TARIKH_TERIMA_PERAKUAN',
+      'TARIKH_SERAHAN_KEPADA_PEGAWAI_KES',
+      'TARIKH_DOKUMEN_LENGKAP',
+      'TARIKH_KEMUKA_PP_KE_KPP',
+      'TARIKH_KEMUKA_PP_KE_TPB',
+      'TARIKH_KEMUKA_PP_KE_TPBK',
+      'TARIKH_LULUS_PP_OLEH_JK2T',
+      'TARIKH_MESY_JK2T_MKSN',
+      'TARIKH_HANTAR_PP_KE_KSN',
+      'TARIKH_TERIMA_PP_KSN',
+      'TARIKH_PENENTUAN_PENGERUSI',
+      'TARIKH_LULUS_PP',
+      'TARIKH_KEMUKA_KE_SPA_P37',
+      'TARIKH_KEMUKA_SP_KE_URUSETIA',
+      'TARIKH_KEMUKA_DRAF_SP_KE_PUU',
+      'TARIKH_KEMUKA_SP_KE_TPB',
+      'TARIKH_SP',
+      'TARIKH_SURAT_REP',
+      'TARIKH_TERIMA_SURAT_REP',
+      'TARIKH_TERIMA_SURAT_REP_OLEH_PEGAWAI_KES',
+      'TARIKH_KEMUKA_PH_KE_KPP',
+      'TARIKH_KEMUKA_PH_KE_TPB',
+      'TARIKH_KEMUKA_PH_KE_TPBK',
+      'TARIKH_LULUS_PH_TPBK',
+      'TARIKH_MESY_PRA_JK2T_LTT',
+      'TARIKH_MESY_JK2T_LTT',
+      'TARIKH_LULUS_PH_OLEH_JK2T',
+      'TARIKH_MLTT',
+      'TARIKH_BORANG_KEPUTUSAN_LTT',
+      'TARIKH_KEMUKA_SK_KE_TPB',
+      'TARIKH_SK',
+      'TARIKH_TERIMA_RAYUAN',
+      'TARIKH_HANTAR_RAYUAN_KE_SPA_SPP',
+      'TARIKH_MLRTT'
+    ];
+
+    dateFields.forEach(field => {
+      const oldVal = editingCase.workflow[field];
+      const newVal = caseForm.workflow[field];
+      if (oldVal !== newVal) {
+        const fieldLabel = String(field).replace('TARIKH_', 'Tarikh ').replace(/_/g, ' ');
+        changes.push(`${fieldLabel} diubah daripada "${oldVal || '-'}" kepada "${newVal || '-'}"`);
+      }
+    });
+
+    let finalCaseForm = { ...caseForm };
+    if (changes.length > 0) {
+      const statusLog: StatusUpdateLog = {
+        updatedAt: new Date().toISOString(),
+        updatedBy: user?.name || 'Sistem',
+        role: user?.role || 'Urus Setia',
+        actionType: 'CASE_EDIT',
+        description: `Kemaskini maklumat kes: ${changes.join('; ')}`
+      };
+      finalCaseForm.workflow = {
+        ...caseForm.workflow,
+        STATUS_HISTORY: [...(editingCase.workflow.STATUS_HISTORY || []), statusLog]
+      };
+    }
+
+    // Update the specific case matching the primary key NO_RUJ_FAIL_JPA
+    const updatedCases = cases.map(c => {
+      if (c.metadata.NO_RUJ_FAIL_JPA === editingCase.metadata.NO_RUJ_FAIL_JPA) {
+        return finalCaseForm;
+      }
+      return c;
+    });
+
+    // Log a simulated email if the assigned Pegawai Kes was changed during update
+    const previousPegawai = editingCase.workflow.PEGAWAI_KES;
+    const currentPegawai = finalCaseForm.workflow.PEGAWAI_KES;
+    if (previousPegawai !== currentPegawai) {
+      const getPegawaiEmail = (pegInfo: string) => {
+        const clean = pegInfo.toLowerCase();
+        if (clean.includes('faezah')) return 'faezah@jpa.gov.my';
+        if (clean.includes('ezly')) return 'ezly@jpa.gov.my';
+        if (clean.includes('shahriman')) return 'shahriman@jpa.gov.my';
+        if (clean.includes('elmi')) return 'elmi@jpa.gov.my';
+        if (clean.includes('azhar')) return 'azhar@jpa.gov.my';
+        return 'azhar@jpa.gov.my';
+      };
+
+      const assignedEmail = getPegawaiEmail(currentPegawai);
+      const emailLogsRaw = localStorage.getItem('spt_email_logs');
+      const emailLogs = emailLogsRaw ? JSON.parse(emailLogsRaw) : [];
+      
+      emailLogs.unshift({
+        id: Date.now(),
+        recipient: assignedEmail,
+        subject: `[SPT JPA] Pindahan Penugasan Kes Tatatertib: ${finalCaseForm.metadata.NO_RUJ_FAIL_JPA}`,
+        body: `Assalamualaikum / Salam Sejahtera,\n\nKes tatatertib berikut telah dipindahkan ke bawah pengurusan anda:\n\nNama Pegawai Awam: ${finalCaseForm.officer.NAMA}\nNo. Rujukan Fail: ${finalCaseForm.metadata.NO_RUJ_FAIL_JPA}\n\nSila layari Papan Pemuka Kes anda di Portal SPT untuk menyemak tugasan ini.\n\nHak Cipta Urus Setia Tatatertib JPA.`,
+        timestamp: new Date().toISOString()
+      });
+      localStorage.setItem('spt_email_logs', JSON.stringify(emailLogs));
+    }
+
+    localStorage.setItem('spt_cases', JSON.stringify(updatedCases));
+    setCases(updatedCases);
+    setOfficerCases(updatedCases.filter(c => c.officer.NO_KP === id));
     setShowCaseModal(false);
     setEditingCase(null);
+
+    // Sync edited case to sheets in background
+    syncCaseToSheets(finalCaseForm);
 
     // Show success banner
     setSaveSuccess('Rekod Fail Kes telah berjaya dikemaskini dan disegerakkan.');
     setTimeout(() => setSaveSuccess(null), 4000);
   };
 
-  // Simulated Google Sheets & Data Studio webhook sync trigger
-  const triggerGoogleSheetsSync = () => {
-    setSyncing(true);
-    setSyncMessage('Menyambung ke Google Sheets & Looker Studio API...');
-    
-    setTimeout(() => {
-      setSyncMessage('Mengesahkan Kredensial Portal Urus Setia JPA...');
-    }, 1000);
-
-    setTimeout(() => {
-      setSyncMessage(`Menyegerakkan ${cases.length} rekod fail kes aktif...`);
-    }, 2000);
-
-    setTimeout(() => {
-      setSyncing(false);
-      setSyncMessage('Penyegerakan Berjaya! Google Sheets dan Data Studio (Looker Studio) telah dikemaskini.');
-      setTimeout(() => setSyncMessage(null), 5000);
-    }, 3800);
-  };
 
   // Google connectivity simulator handler
   const handleConnectGoogle = (e: React.FormEvent) => {
@@ -226,38 +529,6 @@ export default function OfficerProfileDetail() {
     });
   };
 
-  // Dynamic CSV formatting and export tool
-  const exportToCSV = () => {
-    const headers = [
-      'No. Rujukan Fail JPA', 'Nama Pegawai', 'No. KP', 'Jawatan', 'Gred', 
-      'Kementerian', 'Negeri', 'Jenis Kesalahan', 'Fasa Aliran Utama', 'Status HRMIS', 'Pegawai Kes'
-    ];
-    
-    const rows = cases.map(c => [
-      `"${c.metadata.NO_RUJ_FAIL_JPA}"`,
-      `"${c.officer.NAMA}"`,
-      `"${c.officer.NO_KP}"`,
-      `"${c.officer.JAWATAN}"`,
-      `"${c.officer.GRED}"`,
-      `"${c.officer.KEMENTERIAN}"`,
-      `"${c.officer.NEGERI}"`,
-      `"${c.details.JENIS_KESALAHAN.join(', ')}"`,
-      `"${c.workflow.STATUS_KATEGORI_UTAMA}"`,
-      `"${c.workflow.STATUS_KEMASKINI_KES_DI_HRMIS}"`,
-      `"${c.workflow.PEGAWAI_KES}"`
-    ]);
-    
-    const csvContent = "\ufeff" + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `spt_data_tatatertib_sheets_${new Date().toISOString().slice(0,10)}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   if (!officerProfile) {
     return (
@@ -350,16 +621,37 @@ export default function OfficerProfileDetail() {
             <div>
               <div className="flex flex-wrap items-center gap-3">
                 <h3 className="text-lg font-black text-white">{officerProfile.NAMA}</h3>
-                <button
-                  onClick={openEditProfileModal}
-                  className="bg-gov-gold-500 hover:bg-gov-gold-600 text-gov-blue-900 text-[10px] font-bold px-3 py-1 rounded-xl shadow transition-all duration-200 flex items-center gap-1 hover:scale-[1.02] cursor-pointer"
-                >
-                  <Edit className="h-3 w-3" />
-                  <span>Edit Profil</span>
-                </button>
+                {activeCase && canEditCase(activeCase.workflow.PEGAWAI_KES, activeCase.metadata.NO_RUJ_FAIL_JPA) && (
+                  <button
+                    onClick={openEditProfileModal}
+                    className="bg-gov-gold-500 hover:bg-gov-gold-600 text-gov-blue-900 text-[10px] font-bold px-3 py-1 rounded-xl shadow transition-all duration-200 flex items-center gap-1 hover:scale-[1.02] cursor-pointer"
+                  >
+                    <Edit className="h-3 w-3" />
+                    <span>Edit Profil</span>
+                  </button>
+                )}
+                {activeCase && getPermissionTimeLeft(activeCase.metadata.NO_RUJ_FAIL_JPA) && (
+                  <span className="text-[10px] font-black text-emerald-400 bg-emerald-950/40 border border-emerald-800/80 px-2.5 py-1 rounded-xl flex items-center gap-1 animate-pulse">
+                    <span className="h-1.5 w-1.5 bg-emerald-400 rounded-full animate-ping"></span>
+                    Akses Edit Aktif (Baki: {getPermissionTimeLeft(activeCase.metadata.NO_RUJ_FAIL_JPA)})
+                  </span>
+                )}
               </div>
               <div className="flex flex-wrap items-center gap-3 mt-2.5 text-xs text-slate-400">
-                <span className="font-mono bg-slate-800 text-gov-gold-400 px-2 py-0.5 rounded border border-slate-700">No. KP: {officerProfile.NO_KP}</span>
+                <div className="flex items-center gap-1.5 font-mono bg-slate-800 text-gov-gold-400 px-2 py-0.5 rounded border border-slate-700 relative group select-all">
+                  <span>No. KP: {officerProfile.NO_KP}</span>
+                  <button
+                    onClick={handleCopyNoKp}
+                    title="Salin No. KP"
+                    className="p-0.5 hover:bg-slate-700 rounded text-slate-400 hover:text-gov-gold-400 transition-colors cursor-pointer flex items-center justify-center"
+                  >
+                    {copied ? (
+                      <Check className="h-3 w-3 text-emerald-400 animate-fade-in" />
+                    ) : (
+                      <Copy className="h-3 w-3 animate-fade-in" />
+                    )}
+                  </button>
+                </div>
                 <span className="font-bold bg-slate-800 px-2.5 py-0.5 rounded-full text-[10px] text-slate-300 tracking-wider uppercase">{officerProfile.JANTINA === 'L' ? 'Lelaki' : 'Perempuan'}</span>
                 <span className="font-bold text-slate-400">• {officerProfile.KAUM}</span>
               </div>
@@ -441,6 +733,17 @@ export default function OfficerProfileDetail() {
           <Presentation className="h-4 w-4" />
           Pembentangan Kes (Google Slides)
         </button>
+        <button
+          onClick={() => setActiveSubTab('log')}
+          className={`pb-4 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
+            activeSubTab === 'log'
+              ? 'border-gov-blue-700 text-gov-blue-700'
+              : 'border-transparent text-slate-400 hover:text-slate-600'
+          }`}
+        >
+          <ScrollText className="h-4 w-4" />
+          Log Aliran Kerja (Audit Dates/Status)
+        </button>
       </div>
 
       {activeSubTab === 'senarai' && (
@@ -478,8 +781,8 @@ export default function OfficerProfileDetail() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-700 bg-white">
                   {officerCases.length > 0 ? (
-                    officerCases.map((c) => (
-                      <tr key={c.metadata.NO_RUJ_FAIL_JPA} className="hover:bg-slate-50/50 transition-colors">
+                    officerCases.map((c, idx) => (
+                      <tr key={`${c.metadata.BIL}-${c.metadata.NO_RUJ_FAIL_JPA}-${idx}`} className="hover:bg-slate-50/50 transition-colors">
                         <td className="py-4.5 px-6 font-mono text-gov-blue-700 font-bold sticky left-0 bg-white hover:bg-slate-50 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)] border-r border-slate-100">
                           {c.metadata.NO_RUJ_FAIL_JPA}
                         </td>
@@ -546,13 +849,59 @@ export default function OfficerProfileDetail() {
                           </div>
                         </td>
                         <td className="py-4.5 px-6 text-center sticky right-0 bg-white hover:bg-slate-50 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.05)] border-l border-slate-100">
-                          <button
-                            onClick={() => openEditCaseModal(c)}
-                            className="bg-gov-blue-50 text-gov-blue-800 hover:bg-gov-blue-700 hover:text-white border border-gov-blue-200 px-3 py-1.5 rounded-xl font-bold transition-all duration-200 flex items-center gap-1 cursor-pointer"
-                          >
-                            <Edit className="h-3 w-3" />
-                            <span>Ubah</span>
-                          </button>
+                          {canEditCase(c.workflow.PEGAWAI_KES, c.metadata.NO_RUJ_FAIL_JPA) ? (
+                            <button
+                              onClick={() => openEditCaseModal(c)}
+                              className="bg-gov-blue-50 text-gov-blue-800 hover:bg-gov-blue-700 hover:text-white border border-gov-blue-200 px-3 py-1.5 rounded-xl font-bold transition-all duration-200 flex items-center gap-1 cursor-pointer"
+                            >
+                              <Edit className="h-3 w-3" />
+                              <span>Ubah</span>
+                            </button>
+                          ) : (
+                            <div className="flex flex-col gap-1.5 items-center">
+                              {(() => {
+                                const req = permissionRequests.find(r => r.caseId === c.metadata.NO_RUJ_FAIL_JPA && r.requestorEmail === user?.email);
+                                if (!req) {
+                                  return (
+                                    <button
+                                      onClick={() => handleRequestPermission(c)}
+                                      className="bg-slate-50 hover:bg-gov-blue-50 text-slate-600 hover:text-gov-blue-700 border border-slate-200 hover:border-gov-blue-200 px-2 py-1.5 rounded-xl font-bold text-[9px] transition-all duration-200 flex items-center gap-1 cursor-pointer hover:scale-[1.01]"
+                                    >
+                                      <CloudLightning className="h-2.5 w-2.5 text-gov-gold-600 animate-pulse" />
+                                      <span>Minta Izin Edit</span>
+                                    </button>
+                                  );
+                                }
+                                if (req.status === 'PENDING') {
+                                  return (
+                                    <span className="text-[9px] text-slate-450 font-extrabold bg-slate-100 border border-slate-200 px-2.5 py-1.5 rounded-xl block text-center min-w-[100px] text-slate-400">
+                                      Menunggu Kelulusan...
+                                    </span>
+                                  );
+                                }
+                                if (req.status === 'DECLINED') {
+                                  return (
+                                    <button
+                                      onClick={() => handleRequestPermission(c)}
+                                      className="bg-red-50 hover:bg-red-100 text-red-650 hover:text-red-750 border border-red-150 px-2 py-1.5 rounded-xl font-bold text-[9px] transition-all duration-200 flex items-center gap-1 cursor-pointer"
+                                    >
+                                      <AlertCircle className="h-2.5 w-2.5 text-red-500" />
+                                      <span>Minta Izin (Ditolak)</span>
+                                    </button>
+                                  );
+                                }
+                                return (
+                                  <button
+                                    onClick={() => handleRequestPermission(c)}
+                                    className="bg-slate-50 hover:bg-gov-blue-50 text-slate-600 hover:text-gov-blue-700 border border-slate-200 hover:border-gov-blue-200 px-2 py-1.5 rounded-xl font-bold text-[9px] transition-all duration-200 flex items-center gap-1 cursor-pointer hover:scale-[1.01]"
+                                  >
+                                    <CloudLightning className="h-2.5 w-2.5 text-gov-gold-600" />
+                                    <span>Minta Semula (Tamat)</span>
+                                  </button>
+                                );
+                              })()}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -572,7 +921,8 @@ export default function OfficerProfileDetail() {
       )}
 
       {activeSubTab === 'pembentangan' && activeCase && (
-        <div className="relative bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-6 space-y-6 animate-fade-in">
+        <>
+          <div className="relative bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-6 space-y-6 animate-fade-in">
           {/* Google One Tap Auto-Detect Overlay */}
           {showOneTap && !connectedEmail && (
             <div className="absolute top-4 right-4 bg-white border border-slate-200 rounded-2xl shadow-2xl p-4 w-[310px] z-50 animate-fade-in space-y-3 font-sans border-t-4 border-t-gov-blue-700">
@@ -649,10 +999,10 @@ export default function OfficerProfileDetail() {
                 {isDropdownOpen && (
                   <div className="absolute right-0 mt-1.5 w-full bg-white border border-slate-200 rounded-2xl shadow-xl z-50 max-h-64 overflow-y-auto custom-scrollbar p-1.5 space-y-1 animate-fade-in">
                     {filteredCasesForSelect.length > 0 ? (
-                      filteredCasesForSelect.map((c) => (
+                      filteredCasesForSelect.map((c, idx) => (
                         <button
                           type="button"
-                          key={c.metadata.NO_RUJ_FAIL_JPA}
+                          key={`${c.metadata.BIL}-${c.metadata.NO_RUJ_FAIL_JPA}-${idx}`}
                           onClick={() => {
                             setSelectedCaseId(c.metadata.NO_RUJ_FAIL_JPA);
                             setDropdownSearch('');
@@ -816,45 +1166,89 @@ export default function OfficerProfileDetail() {
             </div>
           </div>
         </div>
+          
+          {/* Workflow status decision flow for Penentuan Pengerusi */}
+          {activeCase.workflow.STATUS_KATEGORI_UTAMA === 'Penentuan Pengerusi' && (
+            <PembentanganWorkflowPanel
+              caseData={activeCase}
+              onActionSubmit={handleWorkflowActionSubmit}
+              userRole={user?.role || ''}
+              userName={user?.name || ''}
+            />
+          )}
+        </>
       )}
 
-      {/* CONTAINER 3: Google Sheets & Data Studio Integration Sync Panel */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8 flex flex-col md:flex-row gap-8 items-center justify-between">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="text-[10px] font-bold text-emerald-600 tracking-wider uppercase">Sambungan API Aktif</span>
+      {activeSubTab === 'log' && activeCase && (
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden p-6 space-y-6 animate-fade-in text-left">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div className="flex items-center gap-2.5">
+              <ScrollText className="h-5 w-5 text-gov-blue-700 animate-pulse" />
+              <div>
+                <h3 className="text-sm font-bold text-slate-800">Log Aliran Kerja & Pindaan Tarikh</h3>
+                <p className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5">Sejarah kronologi kemas kini status dan tarikh oleh badan kerajaan</p>
+              </div>
+            </div>
           </div>
-          <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
-            <CloudLightning className="h-4.5 w-4.5 text-gov-gold-500" />
-            Integrasi Google Sheets & Looker Studio
-          </h3>
-          <p className="text-xs text-slate-500 max-w-xl font-normal leading-relaxed">
-            Data portal ini dikonfigurasikan untuk segerak terus ke hamparan Google Sheets dan laporan Data Studio. Segerakkan data setempat selepas melakukan pengemaskinian profil untuk memastikan data visual di Looker Studio dikemaskini.
-          </p>
-        </div>
 
-        <div className="flex flex-wrap gap-4 shrink-0 w-full md:w-auto">
-          {/* CSV Export Button */}
-          <button
-            onClick={exportToCSV}
-            className="flex-1 md:flex-none bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 px-5 py-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-sm"
-          >
-            <FileSpreadsheet className="h-4.5 w-4.5 text-emerald-600" />
-            <span>Eksport CSV Sheets</span>
-          </button>
-
-          {/* Sync Button */}
-          <button
-            onClick={triggerGoogleSheetsSync}
-            disabled={syncing}
-            className="flex-1 md:flex-none bg-gov-blue-700 hover:bg-gov-blue-800 text-white disabled:bg-slate-300 px-5 py-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md shadow-gov-blue-700/10 hover:scale-[1.01]"
-          >
-            <RefreshCw className={`h-4.5 w-4.5 ${syncing ? 'animate-spin' : ''}`} />
-            <span>{syncing ? 'Menyegerak...' : 'Picu Segerak Google Sheets'}</span>
-          </button>
+          {(!activeCase.workflow.STATUS_HISTORY || activeCase.workflow.STATUS_HISTORY.length === 0) ? (
+            <div className="py-12 text-center text-slate-400 font-semibold space-y-2">
+              <Database className="h-8 w-8 mx-auto text-slate-300 mb-1" />
+              <p className="text-xs">Tiada log kemas kini status atau tarikh direkodkan bagi kes ini.</p>
+            </div>
+          ) : (
+            <div className="relative border-l border-slate-150 pl-6 ml-3 space-y-6 py-2">
+              {[...(activeCase.workflow.STATUS_HISTORY || [])].reverse().map((log, idx) => (
+                <div key={idx} className="relative group">
+                  {/* Timeline dot */}
+                  <span className="absolute -left-[31px] top-1 h-4.5 w-4.5 rounded-full border-2 border-white bg-gov-blue-700 text-white flex items-center justify-center text-[8px] shadow-sm font-black">
+                    {(activeCase.workflow.STATUS_HISTORY?.length || 0) - idx}
+                  </span>
+                  
+                  <div className="bg-slate-50 border border-slate-200/60 p-4.5 rounded-2xl space-y-2.5 hover:shadow-xs transition-shadow">
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="space-y-0.5">
+                        <span className="font-extrabold text-slate-800 text-xs block">{log.updatedBy}</span>
+                        <span className="text-[10px] text-slate-450 font-bold bg-slate-200/60 px-2 py-0.5 rounded-md inline-block">
+                          Peranan: {log.role}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-mono font-bold shrink-0 bg-white border border-slate-150 px-2.5 py-1 rounded-lg">
+                        {new Date(log.updatedAt).toLocaleString('ms-MY', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        })}
+                      </span>
+                    </div>
+                    
+                    <div className="text-xs font-semibold text-slate-655 bg-white border border-slate-150 p-3 rounded-xl leading-relaxed">
+                      <div className="flex items-center gap-1.5 mb-1.5 pb-1.5 border-b border-slate-100">
+                        <span className={`h-2 w-2 rounded-full shrink-0 ${
+                          log.actionType === 'CASE_EDIT' ? 'bg-amber-500' :
+                          log.actionType === 'WORKFLOW_ACTION' ? 'bg-emerald-500' : 'bg-gov-blue-600'
+                        }`} />
+                        <span className="text-[10px] text-slate-450 uppercase font-black tracking-wider">
+                          Jenis Tindakan: {
+                            log.actionType === 'CASE_EDIT' ? 'Kemaskini Pindaan Fail' :
+                            log.actionType === 'WORKFLOW_ACTION' ? 'Tindakan Aliran Kerja (PP)' : 'Kemaskini Status'
+                          }
+                        </span>
+                      </div>
+                      <p className="font-medium text-slate-700 whitespace-pre-wrap">{log.description}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      </div>
+      )}
+
+      {/* Google Sheets background synchronization panel omitted to reduce clutter (works silently in background) */}
 
       {/* Sync Status Overlay Alert */}
       {syncMessage && (
@@ -1204,15 +1598,42 @@ export default function OfficerProfileDetail() {
                 {/* PEGAWAI KES */}
                 <div className="space-y-1">
                   <label className="font-bold text-slate-600 block">Pegawai Kes Mengurus</label>
-                  <input
-                    type="text"
-                    value={caseForm.workflow.PEGAWAI_KES}
-                    onChange={(e) => setCaseForm({ 
-                      ...caseForm, 
-                      workflow: { ...caseForm.workflow, PEGAWAI_KES: e.target.value } 
-                    })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-slate-50 font-semibold text-slate-800"
-                  />
+                  <select
+                    value={PEGAWAI_KES_OPTIONS.includes(caseForm.workflow.PEGAWAI_KES) ? caseForm.workflow.PEGAWAI_KES : 'lain-lain'}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === 'lain-lain') {
+                        setCaseForm({ 
+                          ...caseForm, 
+                          workflow: { ...caseForm.workflow, PEGAWAI_KES: '' } 
+                        });
+                      } else {
+                        setCaseForm({ 
+                          ...caseForm, 
+                          workflow: { ...caseForm.workflow, PEGAWAI_KES: val } 
+                        });
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white font-semibold text-slate-800 focus:outline-none focus:border-gov-blue-500"
+                  >
+                    {PEGAWAI_KES_OPTIONS.map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                    <option value="lain-lain">Lain-lain (Sila Nyatakan...)</option>
+                  </select>
+                  
+                  {!PEGAWAI_KES_OPTIONS.includes(caseForm.workflow.PEGAWAI_KES) && (
+                    <input
+                      type="text"
+                      placeholder="Sila masukkan nama Pegawai Kes"
+                      value={caseForm.workflow.PEGAWAI_KES}
+                      onChange={(e) => setCaseForm({ 
+                        ...caseForm, 
+                        workflow: { ...caseForm.workflow, PEGAWAI_KES: e.target.value } 
+                      })}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-slate-50 font-semibold text-slate-800 mt-2 animate-fade-in"
+                    />
+                  )}
                 </div>
 
                 {/* RINGKASAN KESALAHAN */}
@@ -1283,6 +1704,474 @@ export default function OfficerProfileDetail() {
                     })}
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-slate-50 font-semibold text-slate-800"
                   />
+                </div>
+
+                {/* COLLAPSIBLE SECTIONS FOR WORKFLOW DATES */}
+                <div className="md:col-span-2 border-t border-slate-100 pt-4 mt-2">
+                  <h4 className="font-extrabold text-slate-700 text-xs mb-3 flex items-center gap-1.5">
+                    <Calendar className="h-4 w-4 text-gov-blue-700 animate-pulse" />
+                    <span>Kemaskini Tarikh Aliran Kerja (Workflow Dates)</span>
+                  </h4>
+                  
+                  <div className="space-y-3">
+                    {/* GROUP 1 */}
+                    <details className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 group [&_summary::-webkit-details-marker]:hidden">
+                      <summary className="font-bold text-xs text-slate-700 cursor-pointer select-none flex justify-between items-center">
+                        <span>Fasa 1.0: Klarifikasi & Awal</span>
+                        <ChevronDown className="h-4 w-4 text-slate-400 group-open:rotate-180 transition-transform" />
+                      </summary>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-3 pt-3 border-t border-slate-200/60">
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Terima Perakuan</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_TERIMA_PERAKUAN || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_TERIMA_PERAKUAN: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Serahan Ke Pegawai Kes</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_SERAHAN_KEPADA_PEGAWAI_KES || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_SERAHAN_KEPADA_PEGAWAI_KES: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Dokumen Lengkap</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_DOKUMEN_LENGKAP || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_DOKUMEN_LENGKAP: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                      </div>
+                    </details>
+
+                    {/* GROUP 2 */}
+                    <details className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 group [&_summary::-webkit-details-marker]:hidden">
+                      <summary className="font-bold text-xs text-slate-700 cursor-pointer select-none flex justify-between items-center">
+                        <span>Fasa 2.0: Penentuan Pengerusi (PP)</span>
+                        <ChevronDown className="h-4 w-4 text-slate-400 group-open:rotate-180 transition-transform" />
+                      </summary>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-3 pt-3 border-t border-slate-200/60">
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Kemuka PP Ke KPP</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_KEMUKA_PP_KE_KPP || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_KEMUKA_PP_KE_KPP: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Kemuka PP Ke TPB</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_KEMUKA_PP_KE_TPB || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_KEMUKA_PP_KE_TPB: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Kemuka PP Ke TPBK</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_KEMUKA_PP_KE_TPBK || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_KEMUKA_PP_KE_TPBK: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Lulus PP Oleh JK2T</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_LULUS_PP_OLEH_JK2T || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_LULUS_PP_OLEH_JK2T: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Mesyuarat JK2T MKSN</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_MESY_JK2T_MKSN || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_MESY_JK2T_MKSN: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Hantar PP Ke KSN</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_HANTAR_PP_KE_KSN || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_HANTAR_PP_KE_KSN: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Terima PP KSN</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_TERIMA_PP_KSN || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_TERIMA_PP_KSN: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Penentuan Pengerusi</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_PENENTUAN_PENGERUSI || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_PENENTUAN_PENGERUSI: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Lulus PP</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_LULUS_PP || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_LULUS_PP: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Kemuka Ke SPA P37</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_KEMUKA_KE_SPA_P37 || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_KEMUKA_KE_SPA_P37: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                      </div>
+                    </details>
+
+                    {/* GROUP 3 */}
+                    <details className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 group [&_summary::-webkit-details-marker]:hidden">
+                      <summary className="font-bold text-xs text-slate-700 cursor-pointer select-none flex justify-between items-center">
+                        <span>Fasa 3.0: Surat Pertuduhan (SP)</span>
+                        <ChevronDown className="h-4 w-4 text-slate-400 group-open:rotate-180 transition-transform" />
+                      </summary>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-3 pt-3 border-t border-slate-200/60">
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Kemuka SP Ke Urus Setia</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_KEMUKA_SP_KE_URUSETIA || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_KEMUKA_SP_KE_URUSETIA: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Kemuka Draf SP Ke PUU</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_KEMUKA_DRAF_SP_KE_PUU || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_KEMUKA_DRAF_SP_KE_PUU: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Kemuka SP Ke TPB</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_KEMUKA_SP_KE_TPB || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_KEMUKA_SP_KE_TPB: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Surat Pertuduhan (SP)</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_SP || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_SP: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Surat Representasi</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_SURAT_REP || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_SURAT_REP: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Terima Surat Representasi</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_TERIMA_SURAT_REP || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_TERIMA_SURAT_REP: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Terima Rep Oleh Pegawai Kes</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_TERIMA_SURAT_REP_OLEH_PEGAWAI_KES || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_TERIMA_SURAT_REP_OLEH_PEGAWAI_KES: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                      </div>
+                    </details>
+
+                    {/* GROUP 4 */}
+                    <details className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 group [&_summary::-webkit-details-marker]:hidden">
+                      <summary className="font-bold text-xs text-slate-700 cursor-pointer select-none flex justify-between items-center">
+                        <span>Fasa 4.0: Penyerahan Hukuman & Keputusan Lembaga</span>
+                        <ChevronDown className="h-4 w-4 text-slate-400 group-open:rotate-180 transition-transform" />
+                      </summary>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-3 pt-3 border-t border-slate-200/60">
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Kemuka PH Ke KPP</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_KEMUKA_PH_KE_KPP || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_KEMUKA_PH_KE_KPP: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Kemuka PH Ke TPB</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_KEMUKA_PH_KE_TPB || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_KEMUKA_PH_KE_TPB: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Kemuka PH Ke TPBK</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_KEMUKA_PH_KE_TPBK || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_KEMUKA_PH_KE_TPBK: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Lulus PH TPBK</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_LULUS_PH_TPBK || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_LULUS_PH_TPBK: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Mesyuarat Pra JK2T LTT</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_MESY_PRA_JK2T_LTT || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_MESY_PRA_JK2T_LTT: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Mesyuarat JK2T LTT</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_MESY_JK2T_LTT || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_MESY_JK2T_LTT: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Lulus PH Oleh JK2T</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_LULUS_PH_OLEH_JK2T || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_LULUS_PH_OLEH_JK2T: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Mesyuarat LTT (MLTT)</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_MLTT || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_MLTT: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Borang Keputusan LTT</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_BORANG_KEPUTUSAN_LTT || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_BORANG_KEPUTUSAN_LTT: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                      </div>
+                    </details>
+
+                    {/* GROUP 5 */}
+                    <details className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 group [&_summary::-webkit-details-marker]:hidden">
+                      <summary className="font-bold text-xs text-slate-700 cursor-pointer select-none flex justify-between items-center">
+                        <span>Fasa 5.0: Surat Keputusan, Rayuan & Impak</span>
+                        <ChevronDown className="h-4 w-4 text-slate-400 group-open:rotate-180 transition-transform" />
+                      </summary>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-3 pt-3 border-t border-slate-200/60">
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Kemuka SK Ke TPB</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_KEMUKA_SK_KE_TPB || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_KEMUKA_SK_KE_TPB: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Surat Keputusan (SK)</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_SK || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_SK: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Terima Rayuan</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_TERIMA_RAYUAN || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_TERIMA_RAYUAN: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Hantar Rayuan Ke SPA/SPP</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_HANTAR_RAYUAN_KE_SPA_SPP || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_HANTAR_RAYUAN_KE_SPA_SPP: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="font-bold text-slate-500 block text-[10px] uppercase">Tarikh Mesyuarat LRTT (MLRTT)</label>
+                          <input
+                            type="date"
+                            value={caseForm.workflow.TARIKH_MLRTT || ''}
+                            onChange={(e) => setCaseForm({
+                              ...caseForm,
+                              workflow: { ...caseForm.workflow, TARIKH_MLRTT: e.target.value }
+                            })}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:border-gov-blue-500 bg-white font-semibold text-slate-800 text-xs"
+                          />
+                        </div>
+                      </div>
+                    </details>
+                  </div>
                 </div>
               </div>
 

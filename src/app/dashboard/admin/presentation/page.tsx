@@ -7,6 +7,8 @@ import {
   Presentation, Database, Folder, ExternalLink, 
   FolderGit2, CircleUser, Search
 } from 'lucide-react';
+import { useAuth } from '@/components/auth-provider';
+import { PembentanganWorkflowPanel } from '@/components/pembentangan-workflow-panel';
 
 const getEmbedUrl = (url: string | undefined) => {
   if (!url) return '';
@@ -24,6 +26,7 @@ const getEmbedUrl = (url: string | undefined) => {
 };
 
 export default function PresentationPage() {
+  const { user } = useAuth();
   const [cases, setCases] = useState<CompleteCase[]>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('spt_cases');
@@ -108,6 +111,61 @@ export default function PresentationPage() {
         }
       }, (index + 1) * 800);
     });
+  };
+
+  const handleWorkflowActionSubmit = (updatedCase: CompleteCase) => {
+    const updatedCases = cases.map(c => {
+      if (c.metadata.NO_RUJ_FAIL_JPA === updatedCase.metadata.NO_RUJ_FAIL_JPA) {
+        return updatedCase;
+      }
+      return c;
+    });
+
+    localStorage.setItem('spt_cases', JSON.stringify(updatedCases));
+    setCases(updatedCases);
+    
+    // Trigger sync
+    const liveUrl = localStorage.getItem('spt_gsheet_url');
+    if (liveUrl) {
+      const row = [
+        updatedCase.metadata.BIL || '',
+        updatedCase.metadata.NO_RUJ_FAIL_JPA || '',
+        updatedCase.metadata.BIL_IKUT_SUSUNAN_PAPER || '',
+        updatedCase.metadata.URL_LINK_GD || '',
+        updatedCase.metadata.URL_LINK_LSPRM_LPBI_ADUAN || '',
+        updatedCase.metadata.URL_LINK_PP || '',
+        '',
+        updatedCase.metadata.URL_LINK_SP || '',
+        updatedCase.metadata.URL_LINK_PH || '',
+        updatedCase.metadata.URL_LINK_SK || '',
+        '',
+        '',
+        updatedCase.officer.NAMA || '',
+        updatedCase.officer.NO_KP || '',
+        updatedCase.officer.TARIKH_LAHIR || '',
+        updatedCase.officer.PILIHAN_UMUR_PERSARAAN || '',
+        updatedCase.officer.TARIKH_BERSARA || '',
+        updatedCase.officer.JANTINA || '',
+        updatedCase.officer.KAUM || '',
+        updatedCase.officer.JAWATAN || '',
+        updatedCase.officer.SKIM || '',
+        updatedCase.officer.GRED || ''
+      ];
+      try {
+        fetch(liveUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ row })
+        });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    
+    window.dispatchEvent(new Event('storage_updated'));
   };
 
   return (
@@ -207,10 +265,10 @@ export default function PresentationPage() {
                 {isDropdownOpen && (
                   <div className="absolute right-0 mt-1.5 w-full bg-white border border-slate-200 rounded-2xl shadow-xl z-50 max-h-64 overflow-y-auto custom-scrollbar p-1.5 space-y-1 animate-fade-in">
                     {filteredCasesForSelect.length > 0 ? (
-                      filteredCasesForSelect.map((c) => (
+                      filteredCasesForSelect.map((c, idx) => (
                         <button
                           type="button"
-                          key={c.metadata.NO_RUJ_FAIL_JPA}
+                          key={`${c.metadata.BIL}-${c.metadata.NO_RUJ_FAIL_JPA}-${idx}`}
                           onClick={() => {
                             setSelectedCaseId(c.metadata.NO_RUJ_FAIL_JPA);
                             setDropdownSearch('');
@@ -420,6 +478,18 @@ export default function PresentationPage() {
               </div>
             </div>
           </div>
+          
+          {/* Workflow status decision flow for Penentuan Pengerusi */}
+          {activeCase.workflow.STATUS_KATEGORI_UTAMA === 'Penentuan Pengerusi' && (
+            <div className="mt-6">
+              <PembentanganWorkflowPanel
+                caseData={activeCase}
+                onActionSubmit={handleWorkflowActionSubmit}
+                userRole={user?.role || ''}
+                userName={user?.name || ''}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

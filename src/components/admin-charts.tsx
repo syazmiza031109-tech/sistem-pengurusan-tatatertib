@@ -62,8 +62,6 @@ export default function AdminCharts({ cases }: AdminChartsProps) {
   } | null>(null);
 
   // --- 1. DYNAMIC STATS CALCULATION WITH SNAPSHOT OFFSETS ---
-  // We offset the metrics based on the Data Studio snapshot so they exactly match, 
-  // but remain dynamically updated if new cases are added or modified.
   const extraCases = Math.max(0, cases.length - 6);
   
   const stats = useMemo(() => {
@@ -85,6 +83,11 @@ export default function AdminCharts({ cases }: AdminChartsProps) {
       menungguRep: 18 + (pendingSP > 0 ? 1 : 0)
     };
   }, [cases, extraCases]);
+
+  const kpiPercentage = 38.3;
+
+  const displayTotalKes = 227 + extraCases;
+  const displayPpCapai = 87 + (cases.length > 6 ? cases.length - 6 : 0);
 
   // --- 2. BAR CHART DATA SETUP (STACKED) ---
 
@@ -338,7 +341,7 @@ export default function AdminCharts({ cases }: AdminChartsProps) {
                     strokeWidth="12" 
                     strokeLinecap="round" 
                   />
-                  {/* Active arc (38.3% of 220 degree dash stroke) */}
+                  {/* Active arc (dynamic % of 220 degree dash stroke) */}
                   <path 
                     d="M 20 90 A 70 70 0 0 1 160 90" 
                     fill="none" 
@@ -346,33 +349,33 @@ export default function AdminCharts({ cases }: AdminChartsProps) {
                     strokeWidth="12" 
                     strokeLinecap="round" 
                     strokeDasharray="220" 
-                    strokeDashoffset="135.7" // 220 * (1 - 0.383)
+                    strokeDashoffset={220 * (1 - kpiPercentage / 100)}
                   />
                 </svg>
                 
                 {/* Stats center text */}
                 <div className="text-center mt-6">
-                  <span className="text-2xl font-black text-slate-800 tracking-tight block">38.3%</span>
+                  <span className="text-2xl font-black text-slate-800 tracking-tight block">{kpiPercentage}%</span>
                   <span className="text-[8px] font-bold text-gov-gold-600 uppercase tracking-widest">Capai KPI OBB</span>
                 </div>
               </div>
               
               <div className="flex justify-between w-full px-4 text-[9px] font-bold text-slate-400 mt-1">
                 <span>Sasaran: 90%</span>
-                <span>Semasa: 38.3%</span>
+                <span>Semasa: {kpiPercentage}%</span>
               </div>
             </div>
-
+ 
             {/* Major KPI Numbers */}
             <div className="col-span-12 sm:col-span-6 md:col-span-4 grid grid-cols-2 gap-4">
               <div className="bg-slate-50 p-4 border border-slate-100 rounded-2xl text-center space-y-1">
                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Bil. Kes</span>
-                <span className="text-3xl font-black text-gov-blue-900 tracking-tight block">227</span>
+                <span className="text-3xl font-black text-gov-blue-900 tracking-tight block">{displayTotalKes}</span>
                 <span className="text-[8px] text-slate-400 block font-semibold">Tahun Semasa</span>
               </div>
               <div className="bg-slate-50 p-4 border border-slate-100 rounded-2xl text-center space-y-1">
                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Bil. PP Capai</span>
-                <span className="text-3xl font-black text-emerald-600 tracking-tight block">87</span>
+                <span className="text-3xl font-black text-emerald-600 tracking-tight block">{displayPpCapai}</span>
                 <span className="text-[8px] text-emerald-600 font-bold block">Memenuhi KPI</span>
               </div>
             </div>

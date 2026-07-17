@@ -6,7 +6,7 @@ import { useAuth } from '@/components/auth-provider';
 import { 
   Shield, Users, Key, LogOut, LayoutDashboard, 
   FilePlus2, ClipboardCheck, Bell, CircleUserRound,
-  Menu, LineChart, Presentation
+  Menu, LineChart, Presentation, ChevronDown, AlertCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -21,7 +21,72 @@ export default function DashboardLayout({
   const { user, loading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname() || '';
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
+
+  // Sidebar Links based on role
+  const menuItems = [
+    {
+      title: 'Urus Setia (Admin)',
+      role: 'Pegawai Kes',
+      links: [
+        { 
+          name: 'Papan Pemuka Kes', 
+          href: '/dashboard/admin', 
+          icon: LayoutDashboard,
+          subLinks: [
+            { name: 'Ringkasan Utama', href: '/dashboard/admin' },
+            { name: 'Tindakan Segera', href: '/dashboard/admin?filter=immediate' }
+          ]
+        },
+        { 
+          name: 'Senarai Kes', 
+          href: '/dashboard/admin/cases', 
+          icon: Users,
+          subLinks: [
+            { name: 'Semua Fail Kes', href: '/dashboard/admin/cases' },
+            { name: 'Kes Fasa PP', href: '/dashboard/admin/cases?status=PP' },
+            { name: 'Kes Fasa SP', href: '/dashboard/admin/cases?status=SP' }
+          ]
+        },
+        { 
+          name: 'Pengurusan Kes', 
+          href: '/dashboard/admin/register', 
+          icon: FilePlus2,
+          subLinks: [
+            { name: 'Penentuan Pengerusi', href: '/dashboard/admin/register', isSubHeader: true },
+            { name: 'Pendaftaran Kes', href: '/dashboard/admin/register', isSubSubLink: true },
+            { name: 'Surat Pertuduhan', href: '/dashboard/admin/register?tab=surat_petuduhan', isSubHeader: true },
+            { name: 'Surat Pertuduhan', href: '/dashboard/admin/register?tab=surat_petuduhan', isSubSubLink: true }
+          ]
+        },
+        { 
+          name: 'Analitis Grafik', 
+          href: '/dashboard/admin/analytics', 
+          icon: LineChart,
+          subLinks: [
+            { name: 'Persaraan & KPI', href: '/dashboard/admin/analytics?tab=kpi' },
+            { name: 'Taburan Demografi', href: '/dashboard/admin/analytics?tab=demografi' }
+          ]
+        },
+        { name: 'Pembentangan Kes', href: '/dashboard/admin/presentation', icon: Presentation },
+        { name: 'Daftar Pengguna', href: '/dashboard/admin/users', icon: Users, isSuperAdminOnly: true },
+      ]
+    }
+  ];
+
+  // Auto expand menu items containing active sub-links
+  useEffect(() => {
+    const newExpanded: Record<string, boolean> = {};
+    menuItems.forEach(group => {
+      group.links.forEach(link => {
+        const isActive = pathname === link.href || link.subLinks?.some(sub => pathname === sub.href);
+        if (isActive && link.subLinks) {
+          newExpanded[link.name] = true;
+        }
+      });
+    });
+    setExpandedMenus(prev => ({ ...prev, ...newExpanded }));
+  }, [pathname]);
 
   // Google Sheets Backend Integration states
   const [showSetupModal, setShowSetupModal] = useState(false);
@@ -31,6 +96,180 @@ export default function DashboardLayout({
     }
     return '';
   });
+
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [requests, setRequests] = useState<any[]>([]);
+
+  const loadRequests = () => {
+    // 1. Load registration requests (Super Admin only)
+    const storedRegs = localStorage.getItem('spt_user_requests');
+    let regList: any[] = [];
+    if (storedRegs) {
+      try {
+        regList = JSON.parse(storedRegs) as any[];
+        regList = regList.filter((r) => r.status === 'pending');
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // 2. Load permission requests (all users)
+    const storedPerms = localStorage.getItem('spt_permission_requests');
+    let permList: any[] = [];
+    if (storedPerms && user) {
+      try {
+        const allPerms = JSON.parse(storedPerms) as any[];
+        
+        // Filter incoming requests where user is the assigned officer
+        const cleanUserName = user.name.toLowerCase().replace(/puan|encik/g, '').replace(/\(.*\)/g, '').trim();
+        const incoming = allPerms.filter(r => {
+          if (r.status !== 'PENDING') return false;
+          
+          const cleanHandling = r.handlingPegawaiName.toLowerCase().trim();
+          if (cleanHandling.includes(cleanUserName) || cleanUserName.includes(cleanHandling)) {
+            return true;
+          }
+          if (r.handlingPegawaiEmail === user.email) {
+            return true;
+          }
+          return false;
+        }).map(r => ({ ...r, type: 'permission_incoming' }));
+
+        // Filter outgoing requests that were approved/declined and not yet dismissed by this requestor
+        const outgoing = allPerms.filter(r => 
+          r.requestorEmail === user.email && 
+          (r.status === 'APPROVED' || r.status === 'DECLINED') && 
+          !r.dismissedByRequestor
+        ).map(r => ({ ...r, type: 'permission_status_update' }));
+
+        permList = [...incoming, ...outgoing];
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // 3. Load Chairman Determination Tasks for the logged-in body
+    let ppTaskList: any[] = [];
+    if (user) {
+      const storedCases = localStorage.getItem('spt_cases');
+      if (storedCases) {
+        try {
+          const caseList = JSON.parse(storedCases) as any[];
+          const pendingForUser = caseList.filter(c => 
+            c.workflow && c.workflow.STATUS_KATEGORI_UTAMA === 'Penentuan Pengerusi' && c.workflow.CURRENT_PP_BODY === user.role
+          );
+          ppTaskList = pendingForUser.map(c => ({
+            id: `pp-${c.metadata.NO_RUJ_FAIL_JPA}`,
+            caseId: c.metadata.NO_RUJ_FAIL_JPA,
+            officerName: c.officer.NAMA,
+            type: 'pp_task',
+            timestamp: new Date().toISOString()
+          }));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+
+    // Combine notifications based on role
+    const combined: any[] = [];
+    if (user && (user.role === 'Super Admin' || user.isMaster)) {
+      combined.push(...regList.map(r => ({ ...r, type: 'registration' })));
+    }
+    combined.push(...permList);
+    combined.push(...ppTaskList);
+    setRequests(combined);
+  };
+
+  const handleApprovePermission = (reqId: string) => {
+    const stored = localStorage.getItem('spt_permission_requests');
+    if (stored) {
+      const list = JSON.parse(stored) as any[];
+      const req = list.find(r => r.id === reqId);
+      if (req) {
+        const approvedAt = new Date().toISOString();
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        
+        const updated = list.map(r => r.id === reqId ? {
+          ...r,
+          status: 'APPROVED',
+          approvedAt,
+          expiresAt,
+          dismissedByRequestor: false
+        } : r);
+        localStorage.setItem('spt_permission_requests', JSON.stringify(updated));
+
+        // Create simulated email in logs
+        const emailLogsRaw = localStorage.getItem('spt_email_logs');
+        const emailLogs = emailLogsRaw ? JSON.parse(emailLogsRaw) : [];
+        emailLogs.unshift({
+          id: Date.now(),
+          recipient: req.requestorEmail,
+          subject: `[SPT JPA] Kelulusan Kebenaran Mengakses Fail Kes: ${req.caseId}`,
+          body: `Assalamualaikum / Salam Sejahtera,\n\nPermohonan anda untuk mengakses dan meminda fail kes bagi ${req.caseOfficerName} (Fail: ${req.caseId}) telah DILULUSKAN oleh Pegawai Kes assigned (${user?.name}).\n\nKebenaran ini aktif untuk tempoh 24 JAM dan akan tamat secara automatik pada: ${new Date(expiresAt).toLocaleString('ms-MY')}.\n\nHak Cipta Urus Setia Tatatertib JPA.`,
+          timestamp: new Date().toISOString()
+        });
+        localStorage.setItem('spt_email_logs', JSON.stringify(emailLogs));
+      }
+    }
+    loadRequests();
+    window.dispatchEvent(new CustomEvent('spt_permission_changed'));
+  };
+
+  const handleDeclinePermission = (reqId: string) => {
+    const stored = localStorage.getItem('spt_permission_requests');
+    if (stored) {
+      const list = JSON.parse(stored) as any[];
+      const req = list.find(r => r.id === reqId);
+      if (req) {
+        const updated = list.map(r => r.id === reqId ? {
+          ...r,
+          status: 'DECLINED',
+          dismissedByRequestor: false
+        } : r);
+        localStorage.setItem('spt_permission_requests', JSON.stringify(updated));
+
+        // Create simulated email in logs
+        const emailLogsRaw = localStorage.getItem('spt_email_logs');
+        const emailLogs = emailLogsRaw ? JSON.parse(emailLogsRaw) : [];
+        emailLogs.unshift({
+          id: Date.now(),
+          recipient: req.requestorEmail,
+          subject: `[SPT JPA] Permohonan Izin Edit Fail Kes DITOLAK: ${req.caseId}`,
+          body: `Assalamualaikum / Salam Sejahtera,\n\nDukacita dimaklumkan bahawa permohonan anda untuk mengakses fail kes ${req.caseOfficerName} (Fail: ${req.caseId}) telah DITOLAK oleh Pegawai Kes assigned (${user?.name}).\n\nHak Cipta Urus Setia Tatatertib JPA.`,
+          timestamp: new Date().toISOString()
+        });
+        localStorage.setItem('spt_email_logs', JSON.stringify(emailLogs));
+      }
+    }
+    loadRequests();
+    window.dispatchEvent(new CustomEvent('spt_permission_changed'));
+  };
+
+  const handleDismissStatusUpdate = (reqId: string) => {
+    const stored = localStorage.getItem('spt_permission_requests');
+    if (stored) {
+      const list = JSON.parse(stored) as any[];
+      const updated = list.map(r => r.id === reqId ? { ...r, dismissedByRequestor: true } : r);
+      localStorage.setItem('spt_permission_requests', JSON.stringify(updated));
+    }
+    loadRequests();
+    window.dispatchEvent(new CustomEvent('spt_permission_changed'));
+  };
+
+  useEffect(() => {
+    loadRequests();
+    window.addEventListener('storage', loadRequests);
+    window.addEventListener('storage_updated', loadRequests);
+    window.addEventListener('spt_permission_changed', loadRequests);
+    const interval = setInterval(loadRequests, 3500);
+    return () => {
+      window.removeEventListener('storage', loadRequests);
+      window.removeEventListener('storage_updated', loadRequests);
+      window.removeEventListener('spt_permission_changed', loadRequests);
+      clearInterval(interval);
+    };
+  }, [user?.email]);
 
   // Redirect to landing page if not logged in
   useEffect(() => {
@@ -51,13 +290,19 @@ export default function DashboardLayout({
         const merged = INITIAL_CASES.map(initCase => {
           const existing = parsed.find(c => c.officer.NO_KP === initCase.officer.NO_KP);
           if (existing) {
+            let existingPPBody = existing.workflow.CURRENT_PP_BODY;
+            if (existing.workflow.STATUS_KATEGORI_UTAMA === 'Penentuan Pengerusi' && !existingPPBody) {
+              existingPPBody = 'Pegawai Kes';
+              updated = true;
+            }
             // Check if updates are needed (e.g. changed retirement date, jaws, ulasan)
             if (
               existing.officer.TARIKH_BERSARA !== initCase.officer.TARIKH_BERSARA ||
               existing.details.ULASAN_URUS_SETIA !== initCase.details.ULASAN_URUS_SETIA ||
               existing.officer.JAWATAN !== initCase.officer.JAWATAN ||
               existing.officer.NEGERI !== initCase.officer.NEGERI ||
-              existing.metadata.URL_LINK_PP !== initCase.metadata.URL_LINK_PP
+              existing.metadata.URL_LINK_PP !== initCase.metadata.URL_LINK_PP ||
+              existing.workflow.CURRENT_PP_BODY !== existingPPBody
             ) {
               updated = true;
               return {
@@ -86,19 +331,30 @@ export default function DashboardLayout({
                   STATUS_KATEGORI_UTAMA: initCase.workflow.STATUS_KATEGORI_UTAMA,
                   TARIKH_TERIMA_PERAKUAN: initCase.workflow.TARIKH_TERIMA_PERAKUAN,
                   TARIKH_SERAHAN_KEPADA_PEGAWAI_KES: initCase.workflow.TARIKH_SERAHAN_KEPADA_PEGAWAI_KES,
-                  PEGAWAI_KES: initCase.workflow.PEGAWAI_KES
+                  PEGAWAI_KES: initCase.workflow.PEGAWAI_KES,
+                  CURRENT_PP_BODY: existingPPBody
                 }
               };
             }
             return existing;
           }
           updated = true;
-          return initCase;
+          return {
+            ...initCase,
+            workflow: {
+              ...initCase.workflow,
+              CURRENT_PP_BODY: initCase.workflow.STATUS_KATEGORI_UTAMA === 'Penentuan Pengerusi' ? 'Pegawai Kes' : undefined
+            }
+          };
         });
 
         // Add any user-registered cases that do not match the standard mock KPs
         parsed.forEach(p => {
           if (!INITIAL_CASES.some(i => i.officer.NO_KP === p.officer.NO_KP)) {
+            if (p.workflow.STATUS_KATEGORI_UTAMA === 'Penentuan Pengerusi' && !p.workflow.CURRENT_PP_BODY) {
+              p.workflow.CURRENT_PP_BODY = 'Pegawai Kes';
+              updated = true;
+            }
             merged.push(p);
           }
         });
@@ -108,11 +364,35 @@ export default function DashboardLayout({
           window.dispatchEvent(new Event('storage_updated'));
         }
       } catch {
-        localStorage.setItem('spt_cases', JSON.stringify(INITIAL_CASES));
+        const seeded = INITIAL_CASES.map(c => {
+          if (c.workflow.STATUS_KATEGORI_UTAMA === 'Penentuan Pengerusi' && !c.workflow.CURRENT_PP_BODY) {
+            return {
+              ...c,
+              workflow: {
+                ...c.workflow,
+                CURRENT_PP_BODY: 'Pegawai Kes' as const
+              }
+            };
+          }
+          return c;
+        });
+        localStorage.setItem('spt_cases', JSON.stringify(seeded));
         window.dispatchEvent(new Event('storage_updated'));
       }
     } else {
-      localStorage.setItem('spt_cases', JSON.stringify(INITIAL_CASES));
+      const seeded = INITIAL_CASES.map(c => {
+        if (c.workflow.STATUS_KATEGORI_UTAMA === 'Penentuan Pengerusi' && !c.workflow.CURRENT_PP_BODY) {
+          return {
+            ...c,
+            workflow: {
+              ...c.workflow,
+              CURRENT_PP_BODY: 'Pegawai Kes' as const
+            }
+          };
+        }
+        return c;
+      });
+      localStorage.setItem('spt_cases', JSON.stringify(seeded));
       window.dispatchEvent(new Event('storage_updated'));
     }
   }, []);
@@ -128,185 +408,301 @@ export default function DashboardLayout({
     );
   }
 
-  // Sidebar Links based on role
-  const menuItems = [
-    {
-      title: 'Urus Setia (Admin)',
-      role: 'Pegawai Kes',
-      links: [
-        { name: 'Papan Pemuka Kes', href: '/dashboard/admin', icon: LayoutDashboard },
-        { name: 'Senarai Kes', href: '/dashboard/admin/cases', icon: Users },
-        { name: 'Pendaftaran Kes Baru', href: '/dashboard/admin/register', icon: FilePlus2 },
-        { name: 'Analitis Grafik', href: '/dashboard/admin/analytics', icon: LineChart },
-        { name: 'Pembentangan Kes', href: '/dashboard/admin/presentation', icon: Presentation },
-      ]
-    },
-    {
-      title: 'Pengarah (Management)',
-      role: 'Pengarah',
-      links: [
-        { name: 'Kelulusan Kertas (PP)', href: '/dashboard/management', icon: ClipboardCheck },
-      ]
-    },
-    {
-      title: 'Lembaga Tatatertib (Executive)',
-      role: 'Lembaga Tatatertib',
-      links: [
-        { name: 'Persidangan & Hukuman', href: '/dashboard/executive', icon: Key },
-      ]
-    }
-  ];
+  const isGovBody = user ? ['Pegawai Kes', 'KPP', 'TPB(K)OA', 'TPB(K)O', 'Urus Setia', 'PBK', 'TKPPA(P)', 'KPPA', 'KSN'].includes(user.role) : false;
 
-  const filteredMenuItems = menuItems.filter(group => {
+  const filteredMenuItems = menuItems.map(group => {
+    const filteredLinks = group.links.filter(link => {
+      const anyLink = link as any;
+      if (anyLink.isSuperAdminOnly) {
+        return user.role === 'Super Admin' || user.isMaster;
+      }
+      return true;
+    });
+    return { ...group, links: filteredLinks };
+  }).filter(group => {
     if (user.role === 'Super Admin' || user.isMaster) return true;
+    if (group.role === 'Pegawai Kes' && isGovBody) return true;
     return group.role === user.role;
   });
 
   return (
-    <div className="fixed inset-0 flex overflow-hidden bg-[#f8fafc] font-sans">
-      {/* Sidebar Panel */}
-      <aside className={`h-full dark-glass-panel text-slate-300 flex flex-col justify-between shrink-0 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-72'}`}>
-        <div>
-          {/* Logo Brand */}
-          <div className={`h-20 border-b border-slate-800 flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-6'}`}>
-            <div className="h-9 w-9 bg-gov-blue-800 rounded-lg flex items-center justify-center border border-slate-700 shrink-0">
-              <Shield className="h-5 w-5 text-gov-gold-400" />
-            </div>
-            {!isCollapsed && (
-              <div className="animate-fade-in">
-                <span className="text-sm font-bold text-white tracking-tight block">Sistem SPT JPA</span>
-                <span className="text-[9px] font-bold uppercase tracking-wider text-gov-gold-500">Portal Pengurusan</span>
-              </div>
-            )}
+    <div className="fixed inset-0 flex flex-col overflow-hidden bg-[#f8fafc] font-sans">
+      <header className="h-20 bg-slate-900 flex items-center justify-between px-8 z-40 shrink-0 relative">
+        {/* Continual moving gradient wave bar */}
+        <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-gov-blue-600 via-gov-gold-400 to-gov-blue-600 animate-shimmer-wave"></div>
+        
+        {/* Left: Brand Logo & Title */}
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 bg-white rounded-lg flex items-center justify-center border border-slate-700 p-0.5 shrink-0 overflow-hidden">
+            <img src="/jpa-logo.png" alt="JPA Logo" className="h-full w-full object-contain" />
           </div>
- 
-          {/* Nav Items */}
-          <div className="p-4 space-y-6">
-            {filteredMenuItems.map((group, idx) => (
-              <div key={idx} className="space-y-1.5">
-                {!isCollapsed && (
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 animate-fade-in block">
-                    {group.title}
+          <div>
+            <span className="text-sm font-bold text-white tracking-tight block">Sistem SPT JPA</span>
+            <span className="text-[9px] font-bold uppercase tracking-wider text-gov-gold-500">Portal Pengurusan</span>
+          </div>
+        </div>
+
+        {/* Center: Top Level Menu Bar */}
+        <nav className="flex items-center gap-2 h-full">
+          {filteredMenuItems.map((group) =>
+            group.links.map((link) => {
+              const Icon = link.icon;
+              const isMainActive = pathname === link.href || link.subLinks?.some(sub => pathname === sub.href);
+              const hasSubLinks = !!link.subLinks && link.subLinks.length > 0;
+
+              return (
+                <div key={link.href} className="relative h-20 flex items-center">
+                  <Link
+                    href={link.href}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all ${
+                      isMainActive
+                        ? 'bg-gov-gold-500 text-gov-blue-900 shadow-md shadow-gov-gold-500/20 font-bold'
+                        : 'hover:bg-slate-800 hover:text-white text-slate-300'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{link.name}</span>
+                  </Link>
+                </div>
+              );
+            })
+          )}
+        </nav>
+
+        {/* Right: Actions */}
+        <div className="flex items-center gap-4">
+          
+          {/* User Profile Badge */}
+          <Link 
+            href="/dashboard/profile"
+            className="bg-gov-blue-900/60 border border-slate-800 flex items-center hover:bg-gov-blue-850 hover:border-slate-700 transition-all duration-200 cursor-pointer p-2.5 rounded-xl gap-2.5"
+          >
+            <div className="h-7 w-7 rounded-full bg-gov-blue-800 flex items-center justify-center shrink-0 border border-slate-700">
+              <CircleUserRound className="h-4 w-4 text-gov-gold-400" />
+            </div>
+            <div className="text-left hidden md:block">
+              <span className="text-[11px] font-bold text-white block truncate max-w-[120px]">{user.name}</span>
+              <span className="text-[9px] text-slate-500 block truncate max-w-[120px] font-medium">{user.department}</span>
+            </div>
+          </Link>
+
+          {/* User Role Tag */}
+          <div className="hidden lg:flex items-center gap-2 text-[10px] font-bold bg-slate-850 border border-slate-800 px-3 py-2 rounded-xl text-slate-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+            <span className="uppercase tracking-wider">{user.role}</span>
+          </div>
+
+          {/* Gred Indicator */}
+          <div className="hidden sm:flex items-center gap-2 text-[10px] font-bold bg-slate-850 border border-slate-800 px-3 py-2 rounded-xl text-slate-400">
+            <span>Gred:</span>
+            <span className="text-gov-gold-400 font-mono font-black">{user.grade}</span>
+          </div>
+
+          {/* Notification Bell (Visible for all logged-in users) */}
+          {user && (
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className={`h-10 w-10 border border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl flex items-center justify-center transition-all cursor-pointer relative ${requests.length > 0 ? 'animate-shake' : ''}`}
+              >
+                <Bell className="h-4.5 w-4.5" />
+                {requests.length > 0 && (
+                  <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-600 text-white text-[9px] font-black rounded-full flex items-center justify-center border border-slate-900 animate-pulse">
+                    {requests.length}
                   </span>
                 )}
-                <div className="space-y-0.5">
-                  {group.links.map((link) => {
-                    const Icon = link.icon;
-                    const isActive = pathname === link.href;
-                    return (
-                      <Link
-                        key={link.href}
-                        href={link.href}
-                        title={isCollapsed ? link.name : undefined}
-                        className={`w-full flex items-center transition-all duration-200 ${
-                          isCollapsed ? 'justify-center p-2.5 rounded-xl mx-auto w-12 h-10' : 'gap-3 px-3.5 py-2.5 rounded-xl'
-                        } text-xs font-semibold tracking-wide ${
-                          isActive 
-                            ? 'bg-gov-gold-500 text-gov-blue-900 shadow-md shadow-gov-gold-500/20' 
-                            : 'hover:bg-slate-800 hover:text-white text-slate-400'
-                        }`}
-                      >
-                        <Icon className="h-4.5 w-4.5 shrink-0" />
-                        {!isCollapsed && <span className="animate-fade-in">{link.name}</span>}
-                      </Link>
-                    );
-                  })}
+              </button>
+
+              {showNotifications && (
+                <div className="absolute right-0 top-12 w-80 bg-white border border-slate-200 rounded-2xl shadow-2xl p-4 space-y-3 z-50 text-left text-xs font-semibold animate-scale-up">
+                  <div className="border-b border-slate-100 pb-2 flex justify-between items-center">
+                    <span className="font-extrabold text-slate-800">Notifikasi Portal</span>
+                    <span className="text-[9px] bg-amber-50 border border-amber-100 text-amber-700 px-2 py-0.5 rounded-md font-bold uppercase tracking-wider">Masa Nyata</span>
+                  </div>
+
+                  <div className="space-y-2 max-h-[250px] overflow-y-auto custom-scrollbar">
+                    {requests.length === 0 ? (
+                      <p className="text-slate-405 font-bold text-center py-6 text-slate-400 text-[10px]">Tiada notifikasi baharu</p>
+                    ) : (
+                      requests.map((req) => {
+                        if (req.type === 'registration') {
+                          return (
+                            <div key={req.id} className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-2.5">
+                              <div className="space-y-0.5">
+                                <span className="text-[10px] text-slate-400 font-bold block">Pendaftaran Akaun Baharu</span>
+                                <span className="text-slate-850 font-extrabold block truncate text-slate-800">{req.email}</span>
+                                <span className="text-[8px] text-slate-400 font-mono block">Masa: {new Date(req.timestamp).toLocaleString('ms-MY')}</span>
+                              </div>
+
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    const stored = localStorage.getItem('spt_user_requests');
+                                    if (stored) {
+                                      const list = JSON.parse(stored) as any[];
+                                      const updated = list.map(r => r.id === req.id ? { ...r, status: 'rejected' } : r);
+                                      localStorage.setItem('spt_user_requests', JSON.stringify(updated));
+                                    }
+                                    const emailLogsRaw = localStorage.getItem('spt_email_logs');
+                                    const emailLogs = emailLogsRaw ? JSON.parse(emailLogsRaw) : [];
+                                    emailLogs.unshift({
+                                      id: Date.now(),
+                                      recipient: req.email,
+                                      subject: 'Permohonan Pendaftaran Akaun Ditolak',
+                                      body: `Dukacita dimaklumkan bahawa permohonan pendaftaran akaun anda untuk emel ${req.email} telah ditolak oleh Pentadbir. Sila hubungi urus setia JPA untuk maklumat lanjut.`,
+                                      timestamp: new Date().toISOString()
+                                    });
+                                    localStorage.setItem('spt_email_logs', JSON.stringify(emailLogs));
+                                    loadRequests();
+                                  }}
+                                  className="flex-1 py-1.5 bg-red-50 hover:bg-red-100 border border-red-100 text-red-750 font-extrabold rounded-lg text-[10px] transition-all cursor-pointer text-center text-red-700"
+                                >
+                                  Tolak
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    const stored = localStorage.getItem('spt_user_requests');
+                                    if (stored) {
+                                      const list = JSON.parse(stored) as any[];
+                                      const updated = list.map(r => r.id === req.id ? { ...r, status: 'approved' } : r);
+                                      localStorage.setItem('spt_user_requests', JSON.stringify(updated));
+                                    }
+                                    const emailLogsRaw = localStorage.getItem('spt_email_logs');
+                                    const emailLogs = emailLogsRaw ? JSON.parse(emailLogsRaw) : [];
+                                    emailLogs.unshift({
+                                      id: Date.now(),
+                                      recipient: req.email,
+                                      subject: 'Permohonan Pendaftaran Akaun Diluluskan',
+                                      body: `Tahniah! Permohonan pendaftaran akaun anda untuk emel ${req.email} telah diluluskan. Akaun anda sedang dalam proses pendaftaran oleh Pentadbir di bawah fasa urus setia.`,
+                                      timestamp: new Date().toISOString()
+                                    });
+                                    localStorage.setItem('spt_email_logs', JSON.stringify(emailLogs));
+                                    loadRequests();
+                                    setShowNotifications(false);
+                                    router.push(`/dashboard/admin/users?email=${encodeURIComponent(req.email)}`);
+                                  }}
+                                  className="flex-1 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold rounded-lg text-[10px] transition-all cursor-pointer text-center"
+                                >
+                                  Luluskan
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        if (req.type === 'pp_task') {
+                          return (
+                            <div key={req.id} className="bg-purple-50 border border-purple-100 rounded-xl p-3 space-y-2 text-left">
+                              <div className="space-y-0.5">
+                                <span className="text-[10px] text-purple-700 font-bold block">Tugasan Penentuan Pengerusi</span>
+                                <span className="text-slate-800 font-extrabold block text-[11px] leading-tight text-purple-950">
+                                  Sila semak & kemaskini kes {req.officerName} ({req.caseId})
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setShowNotifications(false);
+                                  router.push(`/dashboard/admin/cases/${req.caseId}`);
+                                }}
+                                className="w-full py-1.5 bg-purple-750 hover:bg-purple-800 text-white font-extrabold rounded-lg text-[10px] transition-all cursor-pointer text-center"
+                              >
+                                Buka Sesi Pembentangan
+                              </button>
+                            </div>
+                          );
+                        }
+
+                        if (req.type === 'permission_incoming') {
+                          return (
+                            <div key={req.id} className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-2.5">
+                              <div className="space-y-0.5">
+                                <span className="text-[10px] text-amber-600 font-bold block">Permohonan Izin Edit Kes</span>
+                                <span className="text-slate-800 font-extrabold block text-[11px] leading-tight">
+                                  {req.requestorName} memohon untuk kes {req.caseOfficerName} ({req.caseId})
+                                </span>
+                                <span className="text-[8px] text-slate-400 font-mono block">Masa: {new Date(req.timestamp).toLocaleString('ms-MY')}</span>
+                              </div>
+
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleDeclinePermission(req.id)}
+                                  className="flex-1 py-1.5 bg-red-50 hover:bg-red-100 border border-red-100 text-red-750 font-extrabold rounded-lg text-[10px] transition-all cursor-pointer text-center text-red-700"
+                                >
+                                  Tolak
+                                </button>
+                                <button
+                                  onClick={() => handleApprovePermission(req.id)}
+                                  className="flex-1 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold rounded-lg text-[10px] transition-all cursor-pointer text-center"
+                                >
+                                  Luluskan
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        if (req.type === 'permission_status_update') {
+                          const isApproved = req.status === 'APPROVED';
+                          return (
+                            <div key={req.id} className={`border rounded-xl p-3 space-y-2 ${isApproved ? 'bg-emerald-50/50 border-emerald-100 text-emerald-950' : 'bg-red-50/50 border-red-100 text-red-950'}`}>
+                              <div className="space-y-0.5">
+                                <span className={`text-[10px] font-bold block ${isApproved ? 'text-emerald-600' : 'text-red-650'}`}>
+                                  Permohonan Izin Edit {isApproved ? 'Diluluskan' : 'Ditolak'}
+                                </span>
+                                <p className="text-[10px] leading-tight font-medium text-slate-700">
+                                  Permohonan anda untuk meminda fail kes bagi <strong>{req.caseOfficerName}</strong> ({req.caseId}) telah {isApproved ? 'diluluskan untuk 24 jam' : 'ditolak'}.
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => handleDismissStatusUpdate(req.id)}
+                                className="w-full py-1 text-center bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg text-[9px] font-bold text-slate-600 cursor-pointer transition-colors"
+                              >
+                                Ketahui / Tutup
+                              </button>
+                            </div>
+                          );
+                        }
+
+                        return null;
+                      })
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Sidebar User Footer */}
-        <div className={`p-4 border-t border-slate-800 space-y-4 ${isCollapsed ? 'flex flex-col items-center' : ''}`}>
-          <div 
-            title={isCollapsed ? `${user.name} (${user.department})` : undefined}
-            className={`bg-gov-blue-900/60 border border-slate-800 flex items-center ${
-              isCollapsed ? 'p-2 rounded-xl justify-center w-12 h-10' : 'p-3.5 rounded-xl gap-3'
-            }`}
-          >
-            <div className="h-9 w-9 rounded-full bg-gov-blue-800 flex items-center justify-center shrink-0 border border-slate-700">
-              <CircleUserRound className="h-5 w-5 text-gov-gold-400" />
+              )}
             </div>
-            {!isCollapsed && (
-              <div className="min-w-0 flex-1 animate-fade-in">
-                <span className="text-xs font-bold text-white block truncate">{user.name}</span>
-                <span className="text-[9px] text-slate-500 block truncate font-medium">{user.department}</span>
-              </div>
-            )}
-          </div>
+          )}
 
+          {/* Log Out button */}
           <button
             onClick={logout}
-            title={isCollapsed ? 'Log Keluar Sesi' : undefined}
-            className={`flex items-center justify-center border border-slate-800 hover:bg-red-950/20 hover:border-red-900 hover:text-red-400 text-slate-400 text-xs font-bold transition-all duration-200 cursor-pointer ${
-              isCollapsed ? 'w-12 h-10 p-0 rounded-xl' : 'w-full gap-2.5 py-2.5 rounded-xl'
-            }`}
+            title="Log Keluar Sesi"
+            className="h-10 w-10 border border-slate-800 bg-slate-900 hover:bg-red-950/20 hover:border-red-900 hover:text-red-400 text-slate-400 rounded-xl flex items-center justify-center transition-all cursor-pointer"
           >
             <LogOut className="h-4 w-4" />
-            {!isCollapsed && <span className="animate-fade-in">Log Keluar Sesi</span>}
           </button>
         </div>
-      </aside>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
-        {/* Top Header navbar */}
-        <header className="h-20 border-b border-slate-200 bg-white flex items-center justify-between px-8 z-30 shrink-0">
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="h-10 w-10 rounded-xl hover:bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
-              title={isCollapsed ? "Buka Menu" : "Tutup Menu"}
-            >
-              <Menu className="h-4.5 w-4.5" />
-            </button>
-            <div className="flex items-center gap-3">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                Mod {user.role} Aktif
-              </span>
-            </div>
+      </header>
+
+      <main className="flex-1 overflow-y-auto flex flex-col justify-between min-w-0">
+        {pathname === '/dashboard/admin' || pathname === '/dashboard/management' || pathname === '/dashboard/executive' || pathname === '/dashboard/admin/users' ? (
+          <div className="animate-fade-in flex-1 min-w-0">
+            {children}
           </div>
-
-          <div className="flex items-center gap-4">
-            {/* Google Sheets Backend Sync Indicator */}
-            <button
-              onClick={() => setShowSetupModal(true)}
-              title={gsheetUrl ? "Google Sheets Backend: AKTIF & LIVE. Klik untuk tetapan." : "Google Sheets Backend: SIMULASI SAHAJA. Klik untuk tetapan."}
-              className={`h-10 px-3.5 rounded-xl flex items-center gap-2 text-[10px] font-extrabold transition-all cursor-pointer shadow-sm hover:scale-[1.02] border ${
-                gsheetUrl 
-                  ? 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-800' 
-                  : 'bg-amber-50 hover:bg-amber-100 border-amber-200 text-amber-800'
-              }`}
-            >
-              <span className={`h-2 w-2 rounded-full shrink-0 ${gsheetUrl ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500 animate-pulse'}`}></span>
-              <span className="uppercase tracking-wider">
-                {gsheetUrl ? 'Sheets Backend Live' : 'Sheets Backend Offline'}
-              </span>
-            </button>
-
-            {/* Notification mock */}
-            <button className="h-10 w-10 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 relative transition-colors cursor-pointer">
-              <Bell className="h-4.5 w-4.5" />
-              <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500"></span>
-            </button>
-
-            {/* Profile Dropdown badge */}
-            <div className="h-10 px-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2 text-xs font-bold text-slate-700">
-              <span className="text-slate-400 font-medium">Gred:</span>
-              <span className="bg-gov-blue-50 text-gov-blue-700 px-2 py-0.5 rounded font-mono">
-                {user.grade}
-              </span>
-            </div>
+        ) : (
+          <div className="p-8 max-w-[1700px] w-full mx-auto animate-fade-in flex-1 min-w-0">
+            {children}
           </div>
-        </header>
-
-        {/* Scrollable container */}
-        <main className="flex-1 overflow-y-auto p-8 max-w-[1700px] w-full mx-auto animate-fade-in">
-          {children}
-        </main>
-      </div>
+        )}
+        
+        {/* Government Footer */}
+        <footer className="w-full bg-slate-900 text-slate-400 py-4 px-8 text-left text-xs font-semibold tracking-wide shrink-0 border-t border-slate-800">
+          <div className="max-w-[1700px] mx-auto w-full flex flex-col sm:flex-row justify-between items-center gap-2">
+            <span>Hak Cipta Terpelihara <strong className="font-extrabold text-gov-gold-400">Jabatan Perkhidmatan Awam</strong> &copy; 2026</span>
+            <span className="text-[10px] text-slate-500 font-medium">Sistem Pengurusan Tatatertib (SPT) v1.2.0</span>
+          </div>
+        </footer>
+      </main>
 
       {/* Google Sheets Connection Modal */}
       {showSetupModal && (
@@ -346,24 +742,59 @@ export default function DashboardLayout({
                   <pre className="overflow-x-auto leading-relaxed">{`function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Senarai Kes") || SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
-    var rows = sheet.getDataRange().getValues();
-    var kpToFind = data.row[13]; // Column N (Index 13) is NO. K.P.
-    var foundIndex = -1;
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
     
-    for (var i = 1; i < rows.length; i++) {
-      if (rows[i][13] == kpToFind) {
-        foundIndex = i + 1;
-        break;
+    // 1. Handle Profile Update
+    if (data.action === "update_profile") {
+      var sheet = ss.getSheetByName("Pengguna") || ss.getSheetByName("Users") || ss.getSheets()[0];
+      var rows = sheet.getDataRange().getValues();
+      var foundIndex = -1;
+      for (var i = 1; i < rows.length; i++) {
+        if (rows[i][2] == data.user.noKp) { // Column C (Index 2) is NO_KP
+          foundIndex = i + 1;
+          break;
+        }
       }
+      var profileRow = [data.user.name, data.user.email, data.user.noKp, data.user.department, data.user.grade];
+      if (foundIndex > -1) {
+        sheet.getRange(foundIndex, 1, 1, profileRow.length).setValues([profileRow]);
+      } else {
+        sheet.appendRow(profileRow);
+      }
+      return ContentService.createTextOutput(JSON.stringify({ success: true, action: "update_profile" })).setMimeType(ContentService.MimeType.JSON);
     }
     
-    if (foundIndex > -1) {
-      sheet.getRange(foundIndex, 1, 1, data.row.length).setValues([data.row]);
-    } else {
-      sheet.appendRow(data.row);
+    // 2. Handle Surat Pertuduhan
+    if (data.action === "surat_pertuduhan") {
+      var sheet = ss.getSheetByName("Surat Pertuduhan") || ss.getSheetByName("Letters") || ss.getSheets()[0];
+      var letterRow = [data.caseId, data.refNo, data.letterDate, data.officerName, data.officerKp, data.chargeDetails];
+      sheet.appendRow(letterRow);
+      return ContentService.createTextOutput(JSON.stringify({ success: true, action: "surat_pertuduhan" })).setMimeType(ContentService.MimeType.JSON);
     }
-    return ContentService.createTextOutput(JSON.stringify({ success: true, updated: foundIndex > -1 })).setMimeType(ContentService.MimeType.JSON);
+    
+    // 3. Handle Case Row sync (Default)
+    if (data.row) {
+      var sheet = ss.getSheetByName("Senarai Kes") || ss.getSheets()[0];
+      var rows = sheet.getDataRange().getValues();
+      var kpToFind = data.row[13]; // Column N (Index 13) is NO. K.P.
+      var foundIndex = -1;
+      
+      for (var i = 1; i < rows.length; i++) {
+        if (rows[i][13] == kpToFind) {
+          foundIndex = i + 1;
+          break;
+        }
+      }
+      
+      if (foundIndex > -1) {
+        sheet.getRange(foundIndex, 1, 1, data.row.length).setValues([data.row]);
+      } else {
+        sheet.appendRow(data.row);
+      }
+      return ContentService.createTextOutput(JSON.stringify({ success: true, updated: foundIndex > -1 })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({ success: false, error: "Invalid action or payload" })).setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ success: false, error: err.toString() })).setMimeType(ContentService.MimeType.JSON);
   }

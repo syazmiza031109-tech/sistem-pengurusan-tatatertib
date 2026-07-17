@@ -9,11 +9,19 @@ export const RoleSwitcher: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   const baseRoles = [
-    { name: 'Public (Homepage)', val: 'Public', icon: HelpCircle, color: 'text-slate-500' },
-    { name: 'Pegawai Kes (Urus Setia)', val: 'Pegawai Kes', icon: Users, color: 'text-gov-blue-600' },
-    { name: 'Pengarah (Management)', val: 'Pengarah', icon: ShieldAlert, color: 'text-amber-600' },
-    { name: 'Lembaga Tatatertib (Board)', val: 'Lembaga Tatatertib', icon: ShieldCheck, color: 'text-emerald-600' },
-  ] as const;
+    { name: 'Public (Homepage)', val: 'Public' as const, icon: HelpCircle, color: 'text-slate-500' },
+    { name: 'Pegawai Kes (Urus Setia)', val: 'Pegawai Kes' as const, icon: Users, color: 'text-gov-blue-600' },
+    { name: 'KPP (Ketua Penolong Pengarah)', val: 'KPP' as const, icon: Users, color: 'text-gov-blue-600' },
+    { name: 'TPB(K)OA (Operasi & Analitis)', val: 'TPB(K)OA' as const, icon: Users, color: 'text-gov-blue-600' },
+    { name: 'TPB(K)O (Operasi)', val: 'TPB(K)O' as const, icon: Users, color: 'text-gov-blue-600' },
+    { name: 'Urus Setia Utama', val: 'Urus Setia' as const, icon: Users, color: 'text-gov-blue-600' },
+    { name: 'PBK (Pengarah Bahagian)', val: 'PBK' as const, icon: Users, color: 'text-gov-blue-600' },
+    { name: 'TKPPA(P) (Timbalan KPPA)', val: 'TKPPA(P)' as const, icon: Users, color: 'text-gov-blue-600' },
+    { name: 'KPPA (Ketua Pengarah)', val: 'KPPA' as const, icon: Users, color: 'text-gov-blue-600' },
+    { name: 'KSN (Ketua Setiausaha Negara)', val: 'KSN' as const, icon: Users, color: 'text-gov-blue-600' },
+    { name: 'Pengarah (Management)', val: 'Pengarah' as const, icon: ShieldAlert, color: 'text-amber-600' },
+    { name: 'Lembaga Tatatertib (Board)', val: 'Lembaga Tatatertib' as const, icon: ShieldCheck, color: 'text-emerald-600' },
+  ];
 
   const roles = user?.isMaster
     ? [
@@ -37,7 +45,7 @@ export const RoleSwitcher: React.FC = () => {
               </button>
             </div>
             
-            <div className="space-y-1">
+            <div className="space-y-1 max-h-[350px] overflow-y-auto custom-scrollbar pr-1">
               {roles.map((r) => {
                 const Icon = r.icon;
                 const isActive = (r.val === 'Public' && !user) || (user && user.role === r.val);

@@ -1,20 +1,24 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { CompleteCase } from '@/lib/types';
+import { CompleteCase, StatusUpdateLog } from '@/lib/types';
 import { INITIAL_CASES } from '@/lib/mock-data';
 import { 
   ClipboardCheck, FileText, CheckCircle2,
   Lock, ScrollText, Database, ShieldAlert
 } from 'lucide-react';
+import { useAuth } from '@/components/auth-provider';
+import { DashboardHero } from '@/components/dashboard-hero';
 
 export default function ManagementDashboard() {
+  const { user } = useAuth();
   const [cases, setCases] = useState<CompleteCase[]>([]);
   const [selectedCase, setSelectedCase] = useState<CompleteCase | null>(null);
   
   // Action sheet form state
   const [penentuan, setPenentuan] = useState('P36 - Wujud Kesalahan');
   const [ulasan, setUlasan] = useState('');
+  const [tarikhKelulusan, setTarikhKelulusan] = useState(new Date().toISOString().split('T')[0]);
   const [isApproving, setIsApproving] = useState(false);
   const [approveSuccess, setApproveSuccess] = useState(false);
 
@@ -58,6 +62,14 @@ export default function ManagementDashboard() {
     // Update case in array
     const updatedCases = cases.map(c => {
       if (c.metadata.NO_RUJ_FAIL_JPA === selectedCase.metadata.NO_RUJ_FAIL_JPA) {
+        const statusLog: StatusUpdateLog = {
+          updatedAt: new Date().toISOString(),
+          updatedBy: 'Pengarah / Ketua Jabatan',
+          role: 'Pengarah',
+          actionType: 'STATUS_UPDATE',
+          description: `Kertas Kelulusan disahkan: ${penentuan} (Tarikh: ${tarikhKelulusan})`
+        };
+
         return {
           ...c,
           workflow: {
@@ -65,8 +77,9 @@ export default function ManagementDashboard() {
             STATUS_KATEGORI: 'B07e PP - Keputusan PP Oleh KSN (Wujud P37) - Urusetia',
             STATUS_KATEGORI_UTAMA: 'Surat Pertuduhan (SP)', // Advances to Step 4.0
             PENENTUAN: penentuan,
-            TARIKH_PENENTUAN_PENGERUSI: new Date().toISOString().split('T')[0],
-            TARIKH_LULUS_PP: new Date().toISOString().split('T')[0]
+            TARIKH_PENENTUAN_PENGERUSI: tarikhKelulusan,
+            TARIKH_LULUS_PP: tarikhKelulusan,
+            STATUS_HISTORY: [...(c.workflow.STATUS_HISTORY || []), statusLog]
           },
           details: {
             ...c.details,
@@ -90,12 +103,24 @@ export default function ManagementDashboard() {
   };
 
   return (
-    <div className="space-y-8">
-      {/* Title Header */}
-      <div>
-        <h2 className="text-2xl font-black text-gov-blue-700 tracking-tight">Pengesahan Kertas Makluman & Penentuan Pengerusi</h2>
-        <p className="text-xs text-slate-500 font-semibold tracking-wide uppercase mt-0.5">Ketua Jabatan / Pengarah (Management / Approver)</p>
-      </div>
+    <div className="animate-fade-in">
+      {/* Landing Page Hero Banner */}
+      <DashboardHero
+        userName={user?.name || ''}
+        role={user?.role || ''}
+        grade={user?.grade || ''}
+        title="Papan Pemuka Kelulusan & Penentuan Pengerusi"
+        description="Panel ini dikhaskan untuk Ketua Jabatan / Pengarah bagi mengesahkan kertas makluman urus setia, menilai ringkasan salah laku, menentukan Badan Pengerusi Tatatertib yang bersesuaian (Sama ada P36 atau P37), serta menandatangani kelulusan secara digital."
+        targetId="kpi-section"
+        buttonText="LIHAT SENARAI KES & KELULUSAN"
+      />
+
+      <div className="p-8 max-w-[1700px] w-full mx-auto space-y-8">
+        {/* Title Header */}
+        <div id="kpi-section" className="scroll-mt-24 border-t border-slate-200/60 pt-4">
+          <h2 className="text-xl font-bold text-gov-blue-700 tracking-tight">Pengesahan Kertas Makluman & Penentuan Pengerusi</h2>
+          <p className="text-xs text-slate-500 font-semibold tracking-wide uppercase mt-0.5">Ketua Jabatan / Pengarah (Management / Approver)</p>
+        </div>
 
       {/* KPI Cards / Analytics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -153,9 +178,9 @@ export default function ManagementDashboard() {
 
             {pendingCases.length > 0 ? (
               <div className="space-y-3 overflow-y-auto max-h-[500px] pr-1.5 custom-scrollbar">
-                {pendingCases.map((c) => (
+                {pendingCases.map((c, idx) => (
                   <button
-                    key={c.metadata.NO_RUJ_FAIL_JPA}
+                    key={`${c.metadata.BIL}-${c.metadata.NO_RUJ_FAIL_JPA}-${idx}`}
                     onClick={() => handleSelectCase(c)}
                     className={`w-full text-left p-4 rounded-xl border flex justify-between items-start transition-all duration-200 cursor-pointer ${
                       selectedCase?.metadata.NO_RUJ_FAIL_JPA === c.metadata.NO_RUJ_FAIL_JPA
@@ -246,6 +271,16 @@ export default function ManagementDashboard() {
                     </div>
 
                     <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 block">Tarikh Pengesahan / Kelulusan</label>
+                      <input
+                        type="date"
+                        value={tarikhKelulusan}
+                        readOnly
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs font-semibold bg-slate-150 text-slate-400 cursor-not-allowed focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
                       <label className="text-xs font-bold text-slate-500">Ulasan Ketua Jabatan / Ulasan Urus Setia Tambahan</label>
                       <textarea
                         value={ulasan}
@@ -284,6 +319,7 @@ export default function ManagementDashboard() {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

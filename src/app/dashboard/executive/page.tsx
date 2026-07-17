@@ -1,14 +1,17 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { CompleteCase } from '@/lib/types';
+import { CompleteCase, StatusUpdateLog } from '@/lib/types';
 import { INITIAL_CASES, KEPUTUSAN_PERTUDUHAN } from '@/lib/mock-data';
 import { 
   Key, CheckCircle2, AlertOctagon, HelpCircle, 
   FileSignature, ExternalLink, RefreshCw, Database, ShieldAlert, FileText
 } from 'lucide-react';
+import { useAuth } from '@/components/auth-provider';
+import { DashboardHero } from '@/components/dashboard-hero';
 
 export default function ExecutiveDashboard() {
+  const { user } = useAuth();
   const [cases, setCases] = useState<CompleteCase[]>([]);
   const [selectedCase, setSelectedCase] = useState<CompleteCase | null>(null);
   
@@ -17,6 +20,7 @@ export default function ExecutiveDashboard() {
   const [bilMltt, setBilMltt] = useState('LTT Bil. 3/2026');
   const [jenisMltt, setJenisMltt] = useState('PA - Pihak Berkuasa Tatatertib Kumpulan Sokongan');
   const [ringkasanHukuman, setRingkasanHukuman] = useState('');
+  const [tarikhSidang, setTarikhSidang] = useState(new Date().toISOString().split('T')[0]);
   
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -68,6 +72,14 @@ export default function ExecutiveDashboard() {
     // 1. Update localStorage
     const updated = cases.map(c => {
       if (c.metadata.NO_RUJ_FAIL_JPA === selectedCase.metadata.NO_RUJ_FAIL_JPA) {
+        const statusLog: StatusUpdateLog = {
+          updatedAt: new Date().toISOString(),
+          updatedBy: 'Lembaga Tatatertib Perkhidmatan Awam',
+          role: 'Lembaga Tatatertib',
+          actionType: 'STATUS_UPDATE',
+          description: `Keputusan hukuman direkodkan: ${hukuman} (${bilMltt}, Tarikh: ${tarikhSidang})`
+        };
+
         return {
           ...c,
           workflow: {
@@ -76,12 +88,13 @@ export default function ExecutiveDashboard() {
             STATUS_KATEGORI_UTAMA: 'Penyerahan Hukuman & Keputusan Lembaga (PH/LTT)', // Step 5.0
             STATUS_KEMASKINI_KES_DI_HRMIS: 'SK Updated' as const, // Sync status updated
             KEPUTUSAN_PERTUDUHAN: hukuman,
-            TARIKH_BORANG_KEPUTUSAN_LTT: new Date().toISOString().split('T')[0],
-            TARIKH_MLTT: new Date().toISOString().split('T')[0],
+            TARIKH_BORANG_KEPUTUSAN_LTT: tarikhSidang,
+            TARIKH_MLTT: tarikhSidang,
             BIL_MLTT: bilMltt,
             JENIS_MLTT: jenisMltt,
-            TAHUN_MESY_LTT: new Date().getFullYear(),
-            RINGKASAN_KEPUTUSAN_HUKUMAN: ringkasanHukuman || `DIHUKUM HUKUMAN: ${hukuman.toUpperCase()}`
+            TAHUN_MESY_LTT: tarikhSidang ? parseInt(tarikhSidang.split('-')[0]) : new Date().getFullYear(),
+            RINGKASAN_KEPUTUSAN_HUKUMAN: ringkasanHukuman || `DIHUKUM HUKUMAN: ${hukuman.toUpperCase()}`,
+            STATUS_HISTORY: [...(c.workflow.STATUS_HISTORY || []), statusLog]
           }
         };
       }
@@ -193,12 +206,24 @@ export default function ExecutiveDashboard() {
   };
 
   return (
-    <div className="space-y-8">
-      {/* Title Header */}
-      <div>
-        <h2 className="text-2xl font-black text-gov-blue-700 tracking-tight">Keputusan Sidang & Hukuman Lembaga Tatatertib</h2>
-        <p className="text-xs text-slate-500 font-semibold tracking-wide uppercase mt-0.5">Lembaga Tatatertib Perkhidmatan Awam (Board)</p>
-      </div>
+    <div className="animate-fade-in">
+      {/* Landing Page Hero Banner */}
+      <DashboardHero
+        userName={user?.name || ''}
+        role={user?.role || ''}
+        grade={user?.grade || ''}
+        title="Papan Pemuka Keputusan Sidang & Lembaga"
+        description="Panel Lembaga Tatatertib (Board) menyediakan akses pantas kepada fail kes yang telah lengkap pertuduhan, membolehkan perekodan keputusan mesyuarat sidang Lembaga, penentuan jenis hukuman (seperti amaran, lucut hak emolumen, tangguh pergerakan gaji, atau buang kerja), serta penyegerakan automatik keputusan ke portal HRMIS."
+        targetId="kpi-section"
+        buttonText="LIHAT SENARAI KES & SIDANG HUKUMAN"
+      />
+
+      <div className="p-8 max-w-[1700px] w-full mx-auto space-y-8">
+        {/* Title Header */}
+        <div id="kpi-section" className="scroll-mt-24 border-t border-slate-200/60 pt-4">
+          <h2 className="text-xl font-bold text-gov-blue-700 tracking-tight">Keputusan Sidang & Hukuman Lembaga Tatatertib</h2>
+          <p className="text-xs text-slate-500 font-semibold tracking-wide uppercase mt-0.5">Lembaga Tatatertib Perkhidmatan Awam (Board)</p>
+        </div>
 
       {/* KPI Cards / Analytics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -256,9 +281,9 @@ export default function ExecutiveDashboard() {
 
             {trialCases.length > 0 ? (
               <div className="space-y-3 overflow-y-auto max-h-[500px] pr-1.5 custom-scrollbar">
-                {trialCases.map((c) => (
+                {trialCases.map((c, idx) => (
                   <button
-                    key={c.metadata.NO_RUJ_FAIL_JPA}
+                    key={`${c.metadata.BIL}-${c.metadata.NO_RUJ_FAIL_JPA}-${idx}`}
                     onClick={() => handleSelectCase(c)}
                     className={`w-full text-left p-4 rounded-xl border flex justify-between items-start transition-all duration-200 cursor-pointer ${
                       selectedCase?.metadata.NO_RUJ_FAIL_JPA === c.metadata.NO_RUJ_FAIL_JPA
@@ -302,9 +327,9 @@ export default function ExecutiveDashboard() {
 
             {completedCases.length > 0 ? (
               <div className="space-y-3 overflow-y-auto max-h-[300px] pr-1.5 custom-scrollbar animate-fade-in">
-                {completedCases.map((c) => (
+                {completedCases.map((c, idx) => (
                   <div
-                    key={c.metadata.NO_RUJ_FAIL_JPA}
+                    key={`${c.metadata.BIL}-${c.metadata.NO_RUJ_FAIL_JPA}-${idx}`}
                     className="p-4 rounded-xl border border-slate-100 bg-slate-50/30 flex justify-between items-center transition-all duration-200"
                   >
                     <div className="space-y-1 pr-4 min-w-0 flex-1">
@@ -375,7 +400,7 @@ export default function ExecutiveDashboard() {
                   </div>
 
                   {/* Meeting Details Form */}
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="grid md:grid-cols-3 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Rujukan Mesyuarat LTT</label>
                       <input
@@ -395,6 +420,15 @@ export default function ExecutiveDashboard() {
                         <option value="PA - Kumpulan Sokongan">Kumpulan Sokongan No. 1</option>
                         <option value="PA - Kumpulan Pengurusan">Kumpulan Pengurusan No. 2</option>
                       </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Tarikh Sidang LTT</label>
+                      <input
+                        type="date"
+                        value={tarikhSidang}
+                        onChange={(e) => setTarikhSidang(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-gov-blue-500 bg-slate-50 cursor-pointer"
+                      />
                     </div>
                   </div>
 
@@ -541,6 +575,7 @@ export default function ExecutiveDashboard() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
