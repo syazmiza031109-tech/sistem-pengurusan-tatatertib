@@ -36,6 +36,7 @@ export const PembentanganWorkflowPanel: React.FC<PembentanganWorkflowPanelProps>
   const history = caseData.workflow.PP_HISTORY || [];
   const isMyTurn = currentBody === userRole;
 
+  const [tarikhTindakan, setTarikhTindakan] = useState(() => new Date().toISOString().split('T')[0]);
   const [status, setStatus] = useState<'lulus' | 'kembali_urusetia' | 'kembali_pegawai'>('lulus');
   const [ulasan, setUlasan] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);

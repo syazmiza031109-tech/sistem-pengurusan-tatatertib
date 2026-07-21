@@ -43,6 +43,8 @@ function RegisterCaseContent() {
   // Autocomplete & Profile cache lookup states
   const [existingCases, setExistingCases] = useState<CompleteCase[]>([]);
   const [autofillSuccess, setAutofillSuccess] = useState(false);
+  const [suggestions, setSuggestions] = useState<CompleteCase['officer'][]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Lookup & Workflow States
   const [lookupKp, setLookupKp] = useState('');
